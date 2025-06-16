@@ -1,0 +1,1407 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Admin Dashboard</h1>
+    
+    <!-- Hidden data elements -->
+    <div id="dashboard-data" 
+         data-breakfast="{{ bookings|selectattr('meal_type', 'equalto', 'breakfast')|list|length }}"
+         data-lunch="{{ bookings|selectattr('meal_type', 'equalto', 'lunch')|list|length }}"
+         data-dinner="{{ bookings|selectattr('meal_type', 'equalto', 'dinner')|list|length }}"
+         data-rating-1="{{ feedbacks|selectattr('rating', 'equalto', 1)|list|length }}"
+         data-rating-2="{{ feedbacks|selectattr('rating', 'equalto', 2)|list|length }}"
+         data-rating-3="{{ feedbacks|selectattr('rating', 'equalto', 3)|list|length }}"
+         data-rating-4="{{ feedbacks|selectattr('rating', 'equalto', 4)|list|length }}"
+         data-rating-5="{{ feedbacks|selectattr('rating', 'equalto', 5)|list|length }}"
+         style="display: none;">
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="action-buttons">
+                <a href="{{ url_for('admin_timetable') }}" class="btn btn-primary btn-lg action-btn">
+                    <i class="fas fa-calendar-alt me-2"></i>Manage Timetable
+                </a>
+                <a href="#" class="btn btn-success btn-lg action-btn" data-bs-toggle="modal" data-bs-target="#qrScannerModal">
+                    <i class="fas fa-qrcode me-2"></i>Scan QR Code
+                </a>
+                <a href="#" class="btn btn-info btn-lg action-btn" data-bs-toggle="modal" data-bs-target="#feedbackModal">
+                    <i class="fas fa-comment-alt me-2"></i>View Feedback
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Users</h5>
+                    <h2>{{ users|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Meals Booked</h5>
+                    <h2>{{ bookings|length }}</h2>
+                    <small>{{ bookings|selectattr('is_attended', 'true')|list|length }} Verified</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Today's Bookings</h5>
+                    <h2>{{ bookings|selectattr('date', 'equalto', today)|list|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Avg Rating</h5>
+                    <h2>{{ "%.1f"|format(feedbacks|map(attribute='rating')|sum / feedbacks|length if feedbacks else 0) }}⭐</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Meal Bookings by Type</h5>
+                    <canvas id="mealTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Feedback Ratings Distribution</h5>
+                    <canvas id="ratingsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" id="bookings-tab" data-bs-toggle="tab" data-bs-target="#bookings" type="button" role="tab">
+                <i class="fas fa-list me-2"></i>Bookings
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="scanner-tab" data-bs-toggle="tab" data-bs-target="#scanner" type="button" role="tab">
+                <i class="fas fa-qrcode me-2"></i>QR Scanner
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">
+                Users
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="feedback-tab" data-bs-toggle="tab" data-bs-target="#feedback" type="button" role="tab">
+                Feedback
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="timetable-tab" data-bs-toggle="tab" data-bs-target="#timetable" type="button" role="tab">
+                Timetable
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="scanner-tab" data-bs-toggle="tab" data-bs-target="#scanner" type="button" role="tab">
+                QR Scanner
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="adminTabContent">
+        <!-- Timetable Tab -->
+        <div class="tab-pane fade" id="timetable" role="tabpanel">
+            <div class="text-end mb-3">
+                <a href="{{ url_for('admin_timetable') }}" class="btn btn-primary">
+                    <i class="fas fa-calendar-alt"></i> Manage Timetable
+                </a>
+            </div>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Weekly Meal Schedule</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Day</th>
+                                    <th>Breakfast</th>
+                                    <th>Lunch</th>
+                                    <th>Dinner</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                                {% for day in days %}
+                                <tr>
+                                    <td><strong>{{ day }}</strong></td>
+                                    {% for meal in ['breakfast', 'lunch', 'dinner'] %}
+                                    <td>
+                                        {% set entry = timetable|selectattr('day', 'equalto', day)|selectattr('meal_type', 'equalto', meal)|first %}
+                                        {% if entry %}
+                                        <div class="meal-info">
+                                            <small class="text-muted">{{ entry.start_time }} - {{ entry.end_time }}</small>
+                                            <p class="mb-0">{{ entry.menu }}</p>
+                                            <small class="text-muted">Last updated: {{ entry.last_updated.strftime('%Y-%m-%d %H:%M') }}</small>
+                                        </div>
+                                        {% else %}
+                                        <span class="text-muted">Not scheduled</span>
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div class="tab-pane fade show active" id="users" role="tabpanel">
+            <div class="d-flex justify-content-between mb-3">
+                <input type="text" class="form-control w-25" id="userSearch" placeholder="Search users by name or email...">
+                <button class="btn btn-success" onclick="exportTableToExcel('userTable', 'users_data')">
+                    Export to Excel
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped" id="userTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Reg. Number</th>
+                            <th>Room</th>
+                            <th>Role</th>
+                            <th>Meal Count</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.name }}</td>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.phone_number }}</td>
+                            <td>{{ user.registration_number }}</td>
+                            <td>{{ user.room_number }}</td>
+                            <td>{{ 'Admin' if user.is_admin else 'Student' }}</td>
+                            <td>{{ user.bookings|length }}</td>
+                            <td>
+                                {% if not user.is_admin %}
+                                <form class="delete-user-form d-inline" action="{{ url_for('delete_user', user_id=user.id) }}" method="POST">
+                                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Meals Tab -->
+        <div class="tab-pane fade" id="bookings" role="tabpanel">
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="mealSearch" placeholder="Search by username...">
+                </div>
+                <div class="col-md-2">
+                    <select class="form-control" id="mealTypeFilter">
+                        <option value="">All Meal Types</option>
+                        <option value="breakfast">Breakfast</option>
+                        <option value="lunch">Lunch</option>
+                        <option value="dinner">Dinner</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-control" id="statusFilter">
+                        <option value="">All Status</option>
+                        <option value="verified">Verified</option>
+                        <option value="unverified">Not Verified</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="date" class="form-control" id="dateFilter">
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-success w-100" onclick="exportTableToExcel('mealTable', 'meals_data')">
+                        Export to Excel
+                    </button>
+                </div>
+            </div>
+            <div class="mb-3">
+                <button class="btn btn-primary" id="selectAllMeals">Select All</button>
+                <button class="btn btn-success" id="verifySelected">Verify Selected</button>
+                <button class="btn btn-warning" id="unverifySelected">Unverify Selected</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped" id="mealTable">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAllCheckbox"></th>
+                            <th>ID</th>
+                            <th>User</th>
+                            <th>Meal Type</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mealTableBody">
+                        {% for booking in bookings %}
+                        <tr>
+                            <td><input type="checkbox" class="booking-checkbox" data-booking-id="{{ booking.id }}"></td>
+                            <td>{{ booking.id }}</td>
+                            <td>{{ booking.user.username }}</td>
+                            <td>{{ booking.meal_type }}</td>
+                            <td class="booking-date">{{ booking.date.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <span class="badge {% if booking.is_attended %}badge-success{% else %}badge-warning{% endif %}">
+                                    {{ 'Verified' if booking.is_attended else 'Not Verified' }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if not booking.is_attended %}
+                                <button class="btn btn-success btn-sm verify-booking" 
+                                        data-booking-id="{{ booking.id }}"
+                                        data-user-id="{{ booking.user_id }}"
+                                        data-meal-type="{{ booking.meal_type }}"
+                                        data-date="{{ booking.date.strftime('%Y-%m-%d') }}">
+                                    Verify
+                                </button>
+                                {% else %}
+                                <button class="btn btn-warning btn-sm unverify-booking"
+                                        data-booking-id="{{ booking.id }}">
+                                    Unverify
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Feedback Tab -->
+        <div class="tab-pane fade" id="feedback" role="tabpanel">
+            <div class="row mb-3">
+                <div class="col-md-5">
+                    <input type="text" class="form-control" id="feedbackSearch" placeholder="Search by username or comment...">
+                </div>
+                <div class="col-md-2">
+                    <select class="form-control" id="ratingFilter">
+                        <option value="">All Ratings</option>
+                        <option value="5">5 Stars</option>
+                        <option value="4">4 Stars</option>
+                        <option value="3">3 Stars</option>
+                        <option value="2">2 Stars</option>
+                        <option value="1">1 Star</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="date" class="form-control" id="feedbackDateFilter">
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-success w-100" onclick="exportTableToExcel('feedbackTable', 'feedback_data')">
+                        Export to Excel
+                    </button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped" id="feedbackTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>User</th>
+                            <th>Rating</th>
+                            <th>Comment</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="feedbackTableBody">
+                        {% for feedback in feedbacks %}
+                        <tr>
+                            <td>{{ feedback.id }}</td>
+                            <td>{{ feedback.user.username }}</td>
+                            <td>
+                                {% for _ in range(feedback.rating) %}
+                                ⭐
+                                {% endfor %}
+                            </td>
+                            <td>{{ feedback.comment }}</td>
+                            <td class="feedback-date">{{ feedback.date.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- QR Scanner Tab -->
+        <div class="tab-pane fade" id="scanner" role="tabpanel">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-4 scanner-card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0"><i class="fas fa-camera me-2"></i>QR Code Scanner</h4>
+                            <div class="scanner-controls">
+                                <button id="start-scanner" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-camera"></i> Start Scanner
+                                </button>
+                                <button id="stop-scanner" class="btn btn-danger btn-sm" style="display: none;">
+                                    <i class="fas fa-stop"></i> Stop Scanner
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="scanner-container">
+                                <!-- Scanner Status -->
+                                <div id="current-scan" class="p-3">
+                                    <div class="alert alert-info d-flex align-items-center">
+                                        <i class="fas fa-info-circle fs-4 me-3"></i>
+                                        <div>Click "Start Scanner" to begin scanning QR codes.</div>
+                                    </div>
+                                </div>
+                                <!-- Scanner Area -->
+                                <div id="reader-wrapper" class="position-relative">
+                                    <div id="reader"></div>
+                                    <div id="scan-region-highlight" class="d-none"></div>
+                                </div>
+                                <!-- Camera Selection -->
+                                <div id="camera-controls" class="p-3 border-top bg-light">
+                                    <select id="camera-select" class="form-select">
+                                        <option value="">Loading cameras...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Scan History -->
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0"><i class="fas fa-history me-2"></i>Scan History</h4>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="clearScanHistory()">
+                                <i class="fas fa-trash-alt"></i> Clear History
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="scan-history" class="list-group list-group-flush">
+                                <!-- Scan history items will be added here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- QR Scanner Modal -->
+<div class="modal fade" id="qrScannerModal" tabindex="-1" aria-labelledby="qrScannerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="qrScannerModalLabel">
+                    <i class="fas fa-qrcode me-2"></i>QR Code Scanner
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Scanner Guide Overlay -->
+                <div id="scanner-guide" class="text-center p-3 bg-light border-bottom">
+                    <i class="fas fa-camera fs-3 mb-2"></i>
+                    <p class="mb-0">Place the QR code within the frame to scan</p>
+                </div>
+                
+                <!-- Main Scanner Area -->
+                <div id="reader-container" class="position-relative">
+                    <div id="reader" class="qr-scanner"></div>
+                    <div id="scan-region-highlight" class="scan-region-highlight-custom"></div>
+                </div>
+
+                <!-- Result Display -->
+                <div id="qr-result" class="p-3" style="display: none;">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-check-circle text-success me-2"></i>Scan Result
+                            </h6>
+                            <div id="qr-result-text" class="mb-2"></div>
+                            <div id="qr-verification-status"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Close
+                </button>
+                <button type="button" class="btn btn-primary" id="switch-camera">
+                    <i class="fas fa-camera-rotate me-2"></i>Switch Camera
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Feedback Modal -->
+<div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="feedbackModalLabel">User Feedback</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Rating</th>
+                                <th>Comment</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for feedback in feedbacks %}
+                            <tr>
+                                <td>{{ feedback.user.username }}</td>
+                                <td>
+                                    {% for i in range(feedback.rating) %}
+                                    <i class="fas fa-star text-warning"></i>
+                                    {% endfor %}
+                                </td>
+                                <td>{{ feedback.comment }}</td>
+                                <td>{{ feedback.date.strftime('%Y-%m-%d') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Load JavaScript libraries in the correct order -->
+<!-- jQuery first (if you're using Bootstrap's JS components) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Then Bootstrap Bundle with Popper -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+
+<!-- XLSX library -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<!-- HTML5 QR Code Scanner -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<!-- Initialize Dashboard -->
+<script>
+// Wait for all libraries to load
+window.addEventListener('load', function() {
+    // Initialize dashboard data
+    const dataElement = document.getElementById('dashboard-data');
+    const dashboardData = {
+        mealCounts: {
+            breakfast: parseInt(dataElement.dataset.breakfast) || 0,
+            lunch: parseInt(dataElement.dataset.lunch) || 0,
+            dinner: parseInt(dataElement.dataset.dinner) || 0
+        },
+        ratings: {
+            one: parseInt(dataElement.dataset.rating1) || 0,
+            two: parseInt(dataElement.dataset.rating2) || 0,
+            three: parseInt(dataElement.dataset.rating3) || 0,
+            four: parseInt(dataElement.dataset.rating4) || 0,
+            five: parseInt(dataElement.dataset.rating5) || 0
+        }
+    };
+
+    // Initialize Charts
+    try {
+        // Meal Type Chart
+        const mealTypeCtx = document.getElementById('mealTypeChart');
+        if (mealTypeCtx) {
+            new Chart(mealTypeCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Breakfast', 'Lunch', 'Dinner'],
+                    datasets: [{
+                        data: [
+                            dashboardData.mealCounts.breakfast,
+                            dashboardData.mealCounts.lunch,
+                            dashboardData.mealCounts.dinner
+                        ],
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
+                    }]
+                }
+            });
+        }
+
+        // Ratings Chart
+        const ratingsCtx = document.getElementById('ratingsChart');
+        if (ratingsCtx) {
+            new Chart(ratingsCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
+                    datasets: [{
+                        label: 'Number of Ratings',
+                        data: [
+                            dashboardData.ratings.one,
+                            dashboardData.ratings.two,
+                            dashboardData.ratings.three,
+                            dashboardData.ratings.four,
+                            dashboardData.ratings.five
+                        ],
+                        backgroundColor: '#36A2EB'
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error initializing charts:', error);
+    }
+
+    // QR Scanner Implementation
+    let html5QrcodeScanner = null;
+    let isScanning = false;
+    let lastScannedCode = null;
+    let scanTimeout = null;
+    
+    // Initialize camera selection when the scanner tab is shown
+    document.querySelector('#scanner-tab').addEventListener('shown.bs.tab', async function (e) {
+        updateDebugInfo('Scanner tab opened, initializing camera...');
+        await initializeScanner();
+    });
+
+    // Debug logging function
+    function updateDebugInfo(message, isError = false) {
+        const currentScan = document.getElementById('current-scan');
+        if (currentScan) {
+            currentScan.innerHTML = `
+                <div class="alert alert-${isError ? 'danger' : 'info'}">
+                    ${message}
+                </div>
+            `;
+        }
+        console.log(message);
+    }
+
+    // Initialize scanner
+    async function initializeScanner() {
+        try {
+            const devices = await Html5Qrcode.getCameras();
+            
+            if (devices && devices.length > 0) {
+                updateDebugInfo(`Found ${devices.length} camera(s)`);
+                const cameraSelect = document.getElementById('camera-select');
+                cameraSelect.innerHTML = '<option value="">Select Camera</option>';
+                
+                devices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.id;
+                    option.text = device.label || `Camera ${cameraSelect.options.length}`;
+                    cameraSelect.appendChild(option);
+                });
+                
+                updateDebugInfo('Please select a camera and click Start Scanner');
+            } else {
+                updateDebugInfo('No cameras found. Please ensure your camera is connected and you have granted permissions.', true);
+            }
+        } catch (err) {
+            console.error('Error getting cameras:', err);
+            updateDebugInfo(`Error accessing camera: ${err.message}. Please ensure you have granted camera permissions.`, true);
+        }
+    }
+
+    // Handle scanner start/stop
+    document.getElementById('start-scanner').addEventListener('click', async function() {
+        const deviceId = document.getElementById('camera-select').value;
+        if (!deviceId) {
+            updateDebugInfo('Please select a camera first', true);
+            return;
+        }
+        
+        try {
+            if (html5QrcodeScanner) {
+                await html5QrcodeScanner.clear();
+            }
+            
+            html5QrcodeScanner = new Html5Qrcode("reader");
+            await html5QrcodeScanner.start(
+                deviceId,
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 }
+                },
+                onScanSuccess,
+                onScanFailure
+            );
+            
+            isScanning = true;
+            updateDebugInfo('Scanner active - Ready to scan QR codes');
+            document.getElementById('start-scanner').style.display = 'none';
+            document.getElementById('stop-scanner').style.display = 'inline-block';
+        } catch (err) {
+            console.error('Error starting scanner:', err);
+            updateDebugInfo(`Error starting scanner: ${err.message}`, true);
+        }
+    });
+    
+    document.getElementById('stop-scanner').addEventListener('click', async function() {
+        if (html5QrcodeScanner) {
+            try {
+                await html5QrcodeScanner.stop();
+                isScanning = false;
+                updateDebugInfo('Scanner stopped. Click Start Scanner to begin scanning again.');
+                document.getElementById('start-scanner').style.display = 'inline-block';
+                document.getElementById('stop-scanner').style.display = 'none';
+            } catch (err) {
+                console.error('Error stopping scanner:', err);
+                updateDebugInfo(`Error stopping scanner: ${err.message}`, true);
+            }
+        }
+    });
+    
+    // Clear scan history
+    document.getElementById('clear-history').addEventListener('click', function() {
+        const historyDiv = document.getElementById('scan-history');
+        historyDiv.innerHTML = '<div class="text-center text-muted">No scan history yet</div>';
+    });
+
+    // Handle successful scan
+    async function onScanSuccess(decodedText, decodedResult) {
+        // Prevent duplicate scans within 5 seconds
+        if (lastScannedCode === decodedText && scanTimeout) {
+            return;
+        }
+        
+        lastScannedCode = decodedText;
+        if (scanTimeout) {
+            clearTimeout(scanTimeout);
+        }
+        
+        // Reset last scanned code after 5 seconds
+        scanTimeout = setTimeout(() => {
+            lastScannedCode = null;
+            scanTimeout = null;
+        }, 5000);
+        
+        try {
+            const response = await fetch('/scan_qr', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ qr_data: decodedText })
+            });
+            
+            const data = await response.json();
+            
+            // Update current scan panel
+            const currentScan = document.getElementById('current-scan');
+            currentScan.innerHTML = `
+                <div class="alert alert-${data.error ? 'danger' : 'success'} success-animation">
+                    <h5 class="alert-heading">${data.error ? 'Scan Error' : 'Scan Successful'}</h5>
+                    <p class="mb-0">${data.message || data.error}</p>
+                    <hr>
+                    <small class="text-muted">QR Code: ${decodedText}</small>
+                </div>
+            `;
+            
+            // Add to scan history
+            const historyDiv = document.getElementById('scan-history');
+            if (historyDiv.querySelector('.text-muted')) {
+                historyDiv.innerHTML = ''; // Clear the "No scan history" message
+            }
+            
+            const historyItem = document.createElement('div');
+            historyItem.className = `list-group-item scan-history-item ${data.error ? 'error' : 'success'}`;
+            historyItem.innerHTML = `
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">${data.error ? 'Error' : 'Success'}</h6>
+                    <small>${new Date().toLocaleTimeString()}</small>
+                </div>
+                <p class="mb-1">${data.message || data.error}</p>
+                <small class="text-muted">QR Code: ${decodedText}</small>
+            `;
+            
+            historyDiv.insertBefore(historyItem, historyDiv.firstChild);
+            
+            // Limit history items to 10
+            while (historyDiv.children.length > 10) {
+                historyDiv.removeChild(historyDiv.lastChild);
+            }
+            
+            // Play success sound
+            if (!data.error) {
+                const audio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAASAAAeMwAUFBQUFCgoKCgoKDw8PDw8PFBQUFBQUG5ubm5ubm6CgoKCgoKWlpaWlpaqqqqqqqq+vr6+vr7S0tLS0tLm5ubm5ucPDw8PDw8nJycnJydLS0tLS0t7e3t7e3uPj4+Pj4+np6enp6e/v7+/v7/T09PT09Pn5+fn5+f39/f39/f///8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAQKAAAAAAAAHjOZTf9/AAAAAAAAAAAAAAAAAAAAAP/7kGQAAANUMEoFPeACNQV40KEYABEY41g5vAAA9RjpZxRwAImU+W8eshaFpAQgALAAYALATx/nYDYCMJ0HITQYYA7AH4c7MoGsnCMU5pnW+OQnBcDrS9s4tWH4v/MYCs5xDm3yvt5jhR/+NwwA25CCYxgHAH/+4EAImPwh2f1VcKCYDAxIAALAAA4AFz/yM8jAEATPIOICEAAmSBhFZ//5h2ANgYAkwIAKhgAwM0ZA0DhEAhK4CVWWIZRRF3FykwIQAABwAAKAAAIAAAMAwIAAABD8nhxAAYABwFgEDgGAABEgAAcHKabppmm+OQgBIABwcP8jwwDEANAMAQCEABzAIAEAAAUAwBAIADlASAAYABwFAEDgGAABEgAAcBAEQQAEABwQAAABAMBQAABCEIQnAEAAAcAwAAAIADAAAgAAAAAA4QgAAABAMBoAABCEIQnAEAAAcAwAAAIADAAAgAAAAAA4QgAAAQAEg');
+                audio.play();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            updateDebugInfo(`Error processing QR code: ${error.message}`, true);
+        }
+    }
+
+    function onScanFailure(error) {
+        // Handle scan failure silently to avoid spam
+        console.warn(`QR scan error: ${error}`);
+    }
+
+    // Hide scanner when switching to other tabs
+    document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function(e) {
+            if (e.target.id !== 'scanner-tab' && html5QrcodeScanner) {
+                html5QrcodeScanner.stop().catch(err => console.error('Error stopping scanner:', err));
+                document.getElementById('start-scanner').style.display = 'inline-block';
+                document.getElementById('stop-scanner').style.display = 'none';
+                isScanning = false;
+            }
+        });
+    });
+});
+</script>
+
+<style>
+#reader-wrapper {
+    position: relative;
+    min-height: 300px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#reader {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+#reader video {
+    width: 100% !important;
+    max-width: 400px;
+    border-radius: 8px;
+}
+
+.scan-history-item {
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+}
+
+.scan-history-item.success {
+    border-left-color: #28a745;
+}
+
+.scan-history-item.error {
+    border-left-color: #dc3545;
+}
+
+.scan-history-item:hover {
+    transform: translateX(5px);
+    background-color: #f8f9fa;
+}
+
+#current-scan .alert {
+    margin-bottom: 0;
+}
+
+.success-animation {
+    animation: successPulse 1s ease-in-out;
+}
+
+@keyframes successPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+/* QR Scanner Specific Styles */
+.scanner-card {
+    border: 1px solid #007bff;
+    border-radius: 8px;
+}
+
+.scanner-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+#scanner-guide {
+    background: #e9f7fe;
+    border-bottom: 1px solid #007bff;
+    padding: 1rem;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+#reader-wrapper {
+    border-bottom: 1px solid #007bff;
+}
+
+#camera-controls {
+    background: #f1f1f1;
+    padding: 0.5rem;
+    border-top: 1px solid #007bff;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.current-scan-card {
+    margin-top: 1rem;
+}
+
+.scan-history-card {
+    margin-top: 1rem;
+}
+
+.scan-history-card .list-group-item {
+    border: none;
+}
+
+.scan-history-card .list-group-item.success {
+    background-color: #d4edda;
+}
+
+.scan-history-card .list-group-item.error {
+    background-color: #f8d7da;
+}
+</style>
+
+<!-- Add this script section after the existing scripts -->
+<script>
+// Excel Export Function
+function exportTableToExcel(tableId, fileName) {
+    const table = document.getElementById(tableId);
+    if (!table) {
+        console.error('Table not found');
+        return;
+    }
+
+    // Create a workbook
+    const wb = XLSX.utils.book_new();
+    
+    // Convert table to worksheet, excluding action buttons
+    const ws = XLSX.utils.table_to_sheet(table, {
+        raw: true,
+        display: false,
+        skipHidden: true
+    });
+    
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+    
+    // Save workbook
+    XLSX.writeFile(wb, `${fileName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+// Bookings Panel Functions
+document.addEventListener('DOMContentLoaded', function() {
+    // Select All Checkbox Function
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.booking-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+    }
+
+    // Verify Selected Function
+    const verifySelectedBtn = document.getElementById('verifySelected');
+    if (verifySelectedBtn) {
+        verifySelectedBtn.addEventListener('click', async function() {
+            const selectedBoxes = document.querySelectorAll('.booking-checkbox:checked');
+            if (selectedBoxes.length === 0) {
+                alert('Please select bookings to verify');
+                return;
+            }
+
+            const bookingIds = Array.from(selectedBoxes).map(box => box.dataset.bookingId);
+            try {
+                const response = await fetch('/verify_multiple_bookings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ booking_ids: bookingIds })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    location.reload();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error verifying bookings');
+            }
+        });
+    }
+
+    // Unverify Selected Function
+    const unverifySelectedBtn = document.getElementById('unverifySelected');
+    if (unverifySelectedBtn) {
+        unverifySelectedBtn.addEventListener('click', async function() {
+            const selectedBoxes = document.querySelectorAll('.booking-checkbox:checked');
+            if (selectedBoxes.length === 0) {
+                alert('Please select bookings to unverify');
+                return;
+            }
+
+            const bookingIds = Array.from(selectedBoxes).map(box => box.dataset.bookingId);
+            try {
+                const response = await fetch('/unverify_multiple_bookings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ booking_ids: bookingIds })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    location.reload();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error unverifying bookings');
+            }
+        });
+    }
+
+    // Individual Verify Button Function
+    document.querySelectorAll('.verify-booking').forEach(button => {
+        button.addEventListener('click', async function() {
+            const bookingData = {
+                user_id: this.dataset.userId,
+                meal_type: this.dataset.mealType,
+                date: this.dataset.date
+            };
+
+            try {
+                const response = await fetch('/verify_booking', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('Booking verified successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error verifying booking');
+            }
+        });
+    });
+
+    // Individual Unverify Button Function
+    document.querySelectorAll('.unverify-booking').forEach(button => {
+        button.addEventListener('click', async function() {
+            const bookingId = this.dataset.bookingId;
+            try {
+                const response = await fetch(`/unverify_booking/${bookingId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('Booking unverified successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error unverifying booking');
+            }
+        });
+    });
+
+    // Delete User Function
+    document.querySelectorAll('.delete-user-form').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+                try {
+                    const response = await fetch(this.action, {
+                        method: 'POST'
+                    });
+                    if (response.ok) {
+                        alert('User deleted successfully');
+                        location.reload();
+                    } else {
+                        alert('Error deleting user');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error deleting user');
+                }
+            }
+        });
+    });
+
+    // Format dates in tables
+    function formatDate(dateString) {
+        const options = { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        };
+        return new Date(dateString).toLocaleString('en-US', options);
+    }
+
+    // Format dates in bookings table
+    document.querySelectorAll('.booking-date').forEach(cell => {
+        const originalDate = cell.textContent.trim();
+        if (originalDate) {
+            cell.textContent = formatDate(originalDate).split(',')[0]; // Show only the date part
+        }
+    });
+
+    // Format dates in feedback table
+    document.querySelectorAll('.feedback-date').forEach(cell => {
+        const originalDate = cell.textContent.trim();
+        if (originalDate) {
+            cell.textContent = formatDate(originalDate);
+        }
+    });
+});
+</script>
+{% endblock %}
+
+{% block scripts %}
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Include XLSX library for Excel export -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<!-- Include QR Scanner library -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script>
+// QR Scanner Implementation
+let html5QrCode = null;
+let currentCamera = null;
+let scanHistory = [];
+
+// Function to handle successful QR code scans
+function onScanSuccess(decodedText, decodedResult) {
+    console.log('QR Code detected:', decodedText);
+    try {
+        // Parse the QR code data
+        const data = JSON.parse(decodedText);
+        
+        // Add to scan history
+        addToScanHistory({
+            text: `${data.meal_type} - ${data.date}`,
+            timestamp: new Date().toLocaleString()
+        });
+        
+        // Verify the booking
+        verifyBooking(data);
+        
+        // Play success sound
+        playSound('success');
+        
+    } catch (err) {
+        console.error('Error processing QR code:', err);
+        document.getElementById('current-scan').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                Invalid QR Code format
+            </div>`;
+        playSound('error');
+    }
+}
+
+// Function to handle QR code scan failures
+function onScanFailure(error) {
+    // We can ignore scan failures as they're normal when no QR code is in view
+    console.debug('QR Scan failure:', error);
+}
+
+// Initialize the QR Scanner
+async function initializeScanner() {
+    try {
+        // Show loading message
+        document.getElementById('current-scan').innerHTML = `
+            <div class="alert alert-info d-flex align-items-center">
+                <i class="fas fa-spinner fa-spin me-2"></i>
+                Requesting camera access...
+            </div>`;
+
+        // Create new scanner instance if needed
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader");
+        }
+        
+        // Get available cameras
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = devices.filter(device => device.kind === 'videoinput');
+        
+        console.log('Available cameras:', cameras);
+        
+        if (cameras && cameras.length) {
+            const select = document.getElementById('camera-select');
+            select.innerHTML = cameras.map(camera => 
+                `<option value="${camera.deviceId}">${camera.label || `Camera ${cameras.indexOf(camera) + 1}`}</option>`
+            ).join('');
+            
+            // Set first camera as default
+            currentCamera = cameras[0].deviceId;
+            select.value = currentCamera;
+            
+            // Show scan region highlight
+            document.getElementById('scan-region-highlight').classList.remove('d-none');
+            
+            // Add camera selection handler
+            select.addEventListener('change', async (e) => {
+                currentCamera = e.target.value;
+                if (html5QrCode.isScanning) {
+                    await html5QrCode.stop();
+                    await startScanner();
+                }
+            });
+
+            // Auto start the scanner
+            await startScanner();
+            
+        } else {
+            throw new Error('No cameras found on your device');
+        }
+    } catch (err) {
+        console.error('Error initializing scanner:', err);
+        document.getElementById('current-scan').innerHTML = `
+            <div class="alert alert-danger d-flex align-items-center">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <div>
+                    <strong>Camera Error:</strong> ${err.message || 'Could not access camera'}
+                    <br><small>Please ensure you've granted camera permissions and try again.</small>
+                </div>
+            </div>
+            <button class="btn btn-primary mt-3" onclick="retryInitializeScanner()">
+                <i class="fas fa-redo me-2"></i>Retry Camera Access
+            </button>`;
+    }
+}
+
+// Start the scanner
+async function startScanner() {
+    try {
+        document.getElementById('current-scan').innerHTML = `
+            <div class="alert alert-info d-flex align-items-center">
+                <i class="fas fa-spinner fa-spin me-2"></i>
+                Starting camera...
+            </div>`;
+            
+        const config = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+        };
+
+        await html5QrCode.start(
+            currentCamera,
+            config,
+            onScanSuccess,
+            onScanFailure
+        );
+
+        document.getElementById('start-scanner').style.display = 'none';
+        document.getElementById('stop-scanner').style.display = 'inline-flex';
+        document.getElementById('current-scan').innerHTML = `
+            <div class="alert alert-success d-flex align-items-center">
+                <i class="fas fa-camera fs-4 me-3"></i>
+                <div>Scanner is active and ready to scan QR codes</div>
+            </div>`;
+            
+    } catch (err) {
+        console.error('Error starting scanner:', err);
+        document.getElementById('current-scan').innerHTML = `
+            <div class="alert alert-danger d-flex align-items-center">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <div>
+                    <strong>Error starting camera:</strong> ${err.message}
+                    <br><small>Please try a different camera or check permissions.</small>
+                </div>
+            </div>
+            <button class="btn btn-primary mt-3" onclick="retryInitializeScanner()">
+                <i class="fas fa-redo me-2"></i>Retry Camera Access
+            </button>`;
+    }
+}
+
+// Stop the scanner
+async function stopScanner() {
+    try {
+        if (html5QrCode && html5QrCode.isScanning) {
+            await html5QrCode.stop();
+            document.getElementById('start-scanner').style.display = 'inline-flex';
+            document.getElementById('stop-scanner').style.display = 'none';
+            document.getElementById('current-scan').innerHTML = `
+                <div class="alert alert-info d-flex align-items-center">
+                    <i class="fas fa-info-circle fs-4 me-3"></i>
+                    <div>Scanner stopped. Click "Start Scanner" to begin scanning again.</div>
+                </div>`;
+        }
+    } catch (err) {
+        console.error('Error stopping scanner:', err);
+    }
+}
+
+// Add scan to history
+function addToScanHistory(scan) {
+    scanHistory.unshift(scan);
+    if (scanHistory.length > 50) scanHistory.pop(); // Keep last 50 scans
+    
+    const historyContainer = document.getElementById('scan-history');
+    historyContainer.innerHTML = scanHistory.map(scan => `
+        <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${scan.text}</strong>
+                    <br>
+                    <small class="text-muted">${scan.timestamp}</small>
+                </div>
+                <span class="badge bg-success">Verified</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Clear scan history
+function clearScanHistory() {
+    if (confirm('Are you sure you want to clear the scan history?')) {
+        scanHistory = [];
+        document.getElementById('scan-history').innerHTML = '';
+    }
+}
+
+// Verify booking
+async function verifyBooking(data) {
+    try {
+        const response = await fetch('/verify_booking', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        document.getElementById('current-scan').innerHTML = `
+            <div class="alert alert-${result.success ? 'success' : 'danger'} d-flex align-items-center">
+                <i class="fas fa-${result.success ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                ${result.message}
+            </div>`;
+            
+        if (result.success) {
+            // Optionally reload data or update UI
+            setTimeout(() => {
+                document.getElementById('current-scan').innerHTML = `
+                    <div class="alert alert-success d-flex align-items-center">
+                        <i class="fas fa-camera fs-4 me-3"></i>
+                        <div>Scanner is active and ready to scan QR codes</div>
+                    </div>`;
+            }, 2000);
+        }
+    } catch (err) {
+        console.error('Error verifying booking:', err);
+        document.getElementById('current-scan').innerHTML = `
+            <div class="alert alert-danger d-flex align-items-center">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                Error verifying booking. Please try again.
+            </div>`;
+    }
+}
+
+// Play sound feedback
+function playSound(type) {
+    try {
+        const audio = new Audio(type === 'success' ? '/static/sounds/success.mp3' : '/static/sounds/error.mp3');
+        audio.play();
+    } catch (err) {
+        console.error('Error playing sound:', err);
+    }
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', () => {
+    // Scanner tab activation handler
+    document.querySelector('button[data-bs-target="#scanner"]').addEventListener('click', () => {
+        if (!html5QrCode) {
+            initializeScanner();
+        }
+    });
+    
+    // Start scanner button
+    document.getElementById('start-scanner').addEventListener('click', startScanner);
+    
+    // Stop scanner button
+    document.getElementById('stop-scanner').addEventListener('click', stopScanner);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="hero-content">
+            <h1 class="hero-title">
+                <span class="moving-text">Smart Hostel Food Management</span>
+            </h1>
+            <p class="hero-subtitle">Experience seamless meal management with QR-based verification and real-time tracking</p>
+            
+            {% if not current_user.is_authenticated %}
+            <div class="hero-buttons">
+                <a href="{{ url_for('login') }}" class="btn btn-light btn-lg hero-btn">
+                    <i class="fas fa-sign-in-alt me-2"></i>Login
+                </a>
+                <a href="{{ url_for('register') }}" class="btn btn-outline-light btn-lg hero-btn">
+                    <i class="fas fa-user-plus me-2"></i>Register
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="stats-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-icon mb-3">
+                        <i class="fas fa-utensils fa-2x"></i>
+                    </div>
+                    <div class="stat-number">1000+</div>
+                    <div class="stat-label">Daily Meals Served</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-icon mb-3">
+                        <i class="fas fa-server fa-2x"></i>
+                    </div>
+                    <div class="stat-number">99.9%</div>
+                    <div class="stat-label">System Uptime</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-icon mb-3">
+                        <i class="fas fa-headset fa-2x"></i>
+                    </div>
+                    <div class="stat-number">24/7</div>
+                    <div class="stat-label">Support Available</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features-section" id="features">
+    <div class="container">
+        <h2 class="text-center mb-5">Smart Features for Smart Management</h2>
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-qrcode"></i>
+                    </div>
+                    <h3 class="feature-title">QR Code Verification</h3>
+                    <p class="feature-description">Instant meal verification with secure QR codes. No more manual checks or paper tickets.</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <h3 class="feature-title">Smart Booking</h3>
+                    <p class="feature-description">Book meals in advance, manage schedules, and get automated reminders.</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3 class="feature-title">Real-time Analytics</h3>
+                    <p class="feature-description">Track attendance, analyze patterns, and optimize meal planning with smart insights.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-4 mb-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3 class="feature-title">Mobile Ready</h3>
+                    <p class="feature-description">Access your meal dashboard anytime, anywhere, from any device.</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3 class="feature-title">Secure Access</h3>
+                    <p class="feature-description">Role-based access control with encrypted data and secure authentication.</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <h3 class="feature-title">Instant Feedback</h3>
+                    <p class="feature-description">Rate meals, provide feedback, and help improve the service quality.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                {% if current_user.is_authenticated %}
+                    {% if current_user.is_admin %}
+                        <h2 class="mb-4">Manage Your Hostel Food System</h2>
+                        <div class="cta-buttons">
+                            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary btn-lg">
+                                <i class="fas fa-columns me-2"></i>Admin Dashboard
+                            </a>
+                            <a href="{{ url_for('logout') }}" class="btn btn-outline-primary btn-lg">
+                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                            </a>
+                        </div>
+                    {% else %}
+                        <h2 class="mb-4">Welcome Back, {{ current_user.name }}!</h2>
+                        <div class="cta-buttons">
+                            <a href="{{ url_for('user_dashboard') }}" class="btn btn-primary btn-lg">
+                                <i class="fas fa-user-circle me-2"></i>My Dashboard
+                            </a>
+                            <a href="{{ url_for('logout') }}" class="btn btn-outline-primary btn-lg">
+                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                            </a>
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

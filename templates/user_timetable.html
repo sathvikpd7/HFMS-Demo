@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Weekly Meal Timetable</h2>
+    
+    <div class="row">
+        {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+        {% for day in days %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">{{ day }}</h5>
+                </div>
+                <div class="card-body">
+                    {% set day_entries = timetable|selectattr('day', 'equalto', day)|list %}
+                    {% if day_entries %}
+                        {% for entry in day_entries %}
+                        <div class="meal-schedule mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0 text-primary">{{ entry.meal_type|title }}</h6>
+                                <span class="badge bg-info">{{ entry.start_time }} - {{ entry.end_time }}</span>
+                            </div>
+                            <p class="mb-0">{{ entry.menu }}</p>
+                        </div>
+                        {% if not loop.last %}
+                        <hr class="my-3">
+                        {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted text-center my-3">No meals scheduled</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.card {
+    border-radius: 10px;
+    overflow: hidden;
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card-header {
+    border-bottom: none;
+}
+
+.meal-schedule {
+    padding: 10px;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+}
+
+.badge {
+    font-weight: 500;
+    padding: 6px 10px;
+}
+
+hr {
+    margin: 0.5rem 0;
+    opacity: 0.1;
+}
+
+.text-primary {
+    color: #0d6efd !important;
+}
+
+.bg-primary {
+    background-color: #0d6efd !important;
+}
+
+.bg-info {
+    background-color: #0dcaf0 !important;
+}
+</style>
+{% endblock %} 

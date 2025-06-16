@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">User Dashboard</h2>
+    
+    <div class="row">
+        <!-- Left Column: Forms -->
+        <div class="col-md-6">
+            <!-- Meal Booking Form -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>Book Meal</h4>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('book_meal') }}" method="post">
+                        <div class="mb-3">
+                            <label for="meal_type" class="form-label">Meal Type</label>
+                            <select class="form-select" id="meal_type" name="meal_type" required>
+                                <option value="" disabled selected>Select meal type</option>
+                                <option value="breakfast">Breakfast</option>
+                                <option value="lunch">Lunch</option>
+                                <option value="dinner">Dinner</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="date" name="date" min="{{ today_str }}" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Book Meal</button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Weekly Timetable -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Weekly Meal Schedule</h4>
+                    <a href="{{ url_for('user_timetable') }}" class="btn btn-outline-primary btn-sm">
+                        View Full Schedule
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Day</th>
+                                    <th>Breakfast</th>
+                                    <th>Lunch</th>
+                                    <th>Dinner</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                                {% for day in days %}
+                                <tr>
+                                    <td><strong>{{ day }}</strong></td>
+                                    {% for meal in ['breakfast', 'lunch', 'dinner'] %}
+                                    <td>
+                                        {% set entry = timetable|selectattr('day', 'equalto', day)|selectattr('meal_type', 'equalto', meal)|first %}
+                                        {% if entry %}
+                                        <div class="meal-info">
+                                            <small class="text-muted">{{ entry.start_time }} - {{ entry.end_time }}</small>
+                                            <p class="mb-0">{{ entry.menu }}</p>
+                                            <small class="text-muted">Last updated: {{ entry.last_updated.strftime('%Y-%m-%d %H:%M') }}</small>
+                                        </div>
+                                        {% else %}
+                                        <span class="text-muted">Not scheduled</span>
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Feedback Form -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Submit Feedback</h4>
+                    <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#feedbackForm">
+                        Add New Feedback
+                    </button>
+                </div>
+                <div class="collapse" id="feedbackForm">
+                    <div class="card-body">
+                        <form action="{{ url_for('submit_feedback') }}" method="post" id="feedbackFormElement">
+                            <div class="mb-3">
+                                <label for="rating" class="form-label">Rating</label>
+                                <div class="rating">
+                                    <div class="btn-group" role="group">
+                                        {% for i in range(5, 0, -1) %}
+                                        <input type="radio" class="btn-check" name="rating" id="rating{{ i }}" value="{{ i }}" required>
+                                        <label class="btn btn-outline-warning" for="rating{{ i }}">
+                                            {{ "⭐" * i }}
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="comment" class="form-label">Your Feedback</label>
+                                <textarea class="form-control" id="comment" name="comment" rows="3" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Submit Feedback</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Previous Feedback -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>Your Previous Feedback</h4>
+                </div>
+                <div class="card-body">
+                    {% if feedbacks %}
+                        <div class="list-group">
+                            {% for feedback in feedbacks %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="text-warning mb-1">
+                                            {{ "⭐" * feedback.rating }}
+                                        </div>
+                                        <p class="mb-1">{{ feedback.comment }}</p>
+                                    </div>
+                                    <small class="text-muted">{{ feedback.date.strftime('%Y-%m-%d %H:%M') }}</small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            You haven't submitted any feedback yet.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column: Bookings -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Your Bookings</h4>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-primary btn-sm" id="showUpcoming">Upcoming</button>
+                        <button class="btn btn-outline-primary btn-sm" id="showPast">Past</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if current_user.bookings %}
+                        <div class="bookings-container">
+                            {% for booking in current_user.bookings|sort(attribute='date', reverse=true) %}
+                                <div class="booking-card {% if booking.date < today_date %}past-booking{% else %}upcoming-booking{% endif %} mb-3">
+                                    <div class="booking-details p-3 border rounded {% if booking.is_attended %}bg-success bg-opacity-10{% endif %}">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h5 class="mb-1">{{ booking.meal_type|title }}</h5>
+                                                <p class="mb-2">
+                                                    <i class="fas fa-calendar-alt me-2"></i>
+                                                    {{ booking.date.strftime('%d %B, %Y') }}
+                                                </p>
+                                                <span class="badge {% if booking.is_attended %}bg-success{% else %}bg-warning{% endif %}">
+                                                    {% if booking.is_attended %}
+                                                        <i class="fas fa-check me-1"></i> Verified
+                                                    {% else %}
+                                                        <i class="fas fa-clock me-1"></i> Pending
+                                                    {% endif %}
+                                                </span>
+                                            </div>
+                                            {% if booking.qr_code_path and not booking.is_attended %}
+                                                <div class="text-end">
+                                                    <button class="btn btn-primary btn-sm show-qr-code" 
+                                                            data-qr-path="{{ booking.qr_code_path }}"
+                                                            data-meal-type="{{ booking.meal_type|title }}"
+                                                            data-date="{{ booking.date.strftime('%d %B, %Y') }}"
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#qrModal">
+                                                        <i class="fas fa-qrcode me-1"></i>
+                                                        Show QR Code
+                                                    </button>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No bookings found. Use the form to book your meals.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- QR Code Modal -->
+<div class="modal fade" id="qrModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Your QR Code</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="qrCodeDetails" class="mb-3">
+                    <h6 id="qrMealType" class="mb-1"></h6>
+                    <p id="qrDate" class="text-muted small"></p>
+                </div>
+                <img id="qrCodeImage" src="" alt="QR Code" class="img-fluid">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="downloadQRCode()">
+                    <i class="fas fa-download me-1"></i> Download
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.rating .btn-group {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+}
+
+.rating .btn-outline-warning {
+    margin: 0 2px;
+}
+
+.rating .btn-check:checked + .btn-outline-warning {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.qr-code-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.list-group-item {
+    transition: background-color 0.3s;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* Additional styles for bookings */
+.booking-card {
+    transition: transform 0.3s;
+}
+
+.booking-card:hover {
+    transform: translateY(-2px);
+}
+
+.past-booking {
+    display: none;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle feedback form submission
+    const feedbackForm = document.getElementById('feedbackFormElement');
+    if (feedbackForm) {
+        feedbackForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: new FormData(this)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-success mt-3';
+                    alert.textContent = 'Thank you for your feedback!';
+                    feedbackForm.appendChild(alert);
+                    
+                    // Reset form
+                    feedbackForm.reset();
+                    
+                    // Close the collapse after 2 seconds
+                    setTimeout(() => {
+                        bootstrap.Collapse.getInstance(document.getElementById('feedbackForm')).hide();
+                        // Reload page to show new feedback
+                        location.reload();
+                    }, 2000);
+                } else {
+                    throw new Error(data.message || 'Error submitting feedback');
+                }
+            })
+            .catch(error => {
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger mt-3';
+                alert.textContent = error.message;
+                feedbackForm.appendChild(alert);
+            });
+        });
+    }
+
+    // Handle QR code display
+    document.querySelectorAll('.show-qr-code').forEach(button => {
+        button.addEventListener('click', function() {
+            const path = this.getAttribute('data-qr-path');
+            const mealType = this.getAttribute('data-meal-type');
+            const date = this.getAttribute('data-date');
+            
+            document.getElementById('qrMealType').textContent = mealType;
+            document.getElementById('qrDate').textContent = date;
+            document.getElementById('qrCodeImage').src = path;
+        });
+    });
+
+    // Function to download QR code
+    window.downloadQRCode = function() {
+        const img = document.getElementById('qrCodeImage');
+        const mealType = document.getElementById('qrMealType').textContent;
+        const date = document.getElementById('qrDate').textContent;
+        
+        const link = document.createElement('a');
+        link.download = `QR_${mealType}_${date}.png`;
+        link.href = img.src;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // Filter bookings
+    document.getElementById('showUpcoming').addEventListener('click', function() {
+        document.querySelectorAll('.past-booking').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.upcoming-booking').forEach(el => el.style.display = 'block');
+        this.classList.add('active');
+        document.getElementById('showPast').classList.remove('active');
+    });
+
+    document.getElementById('showPast').addEventListener('click', function() {
+        document.querySelectorAll('.upcoming-booking').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.past-booking').forEach(el => el.style.display = 'block');
+        this.classList.add('active');
+        document.getElementById('showUpcoming').classList.remove('active');
+    });
+
+    // Show upcoming bookings by default
+    document.getElementById('showUpcoming').click();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Meal Timetable Management</h2>
+    
+    <!-- Timetable Form -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Update Timetable</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" class="needs-validation" novalidate>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="day" class="form-label">Day</label>
+                        <select class="form-select" id="day" name="day" required>
+                            <option value="">Select Day</option>
+                            <option value="Monday">Monday</option>
+                            <option value="Tuesday">Tuesday</option>
+                            <option value="Wednesday">Wednesday</option>
+                            <option value="Thursday">Thursday</option>
+                            <option value="Friday">Friday</option>
+                            <option value="Saturday">Saturday</option>
+                            <option value="Sunday">Sunday</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="meal_type" class="form-label">Meal Type</label>
+                        <select class="form-select" id="meal_type" name="meal_type" required>
+                            <option value="">Select Meal</option>
+                            <option value="breakfast">Breakfast</option>
+                            <option value="lunch">Lunch</option>
+                            <option value="dinner">Dinner</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="start_time" class="form-label">Start Time (24-hour format)</label>
+                        <input type="text" class="form-control time-input" id="start_time" name="start_time" 
+                               required placeholder="HH:MM" maxlength="5">
+                        <div class="form-text">Example: 07:00, 13:00, 15:30</div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="end_time" class="form-label">End Time (24-hour format)</label>
+                        <input type="text" class="form-control time-input" id="end_time" name="end_time" 
+                               required placeholder="HH:MM" maxlength="5">
+                        <div class="form-text">Example: 08:00, 14:00, 16:30</div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="menu" class="form-label">Menu</label>
+                    <textarea class="form-control" id="menu" name="menu" rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Update Timetable</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Current Timetable -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Current Timetable</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Day</th>
+                            <th>Meal Type</th>
+                            <th>Time</th>
+                            <th>Menu</th>
+                            <th>Last Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in timetable %}
+                        <tr>
+                            <td>{{ entry.day }}</td>
+                            <td>{{ entry.meal_type|title }}</td>
+                            <td>{{ entry.start_time }} - {{ entry.end_time }}</td>
+                            <td>{{ entry.menu }}</td>
+                            <td>{{ entry.last_updated.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.card-header {
+    border-bottom: none;
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table th {
+    font-weight: 600;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.btn-primary {
+    padding: 8px 20px;
+    font-weight: 500;
+}
+
+textarea.form-control {
+    resize: vertical;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    
+    // Function to validate and format time
+    function formatTimeInput(input) {
+        let value = input.value.replace(/\D/g, '');
+        
+        if (value.length >= 2) {
+            const hours = parseInt(value.substring(0, 2));
+            if (hours > 23) {
+                value = '23' + value.substring(2);
+            }
+        }
+        
+        if (value.length >= 4) {
+            const minutes = parseInt(value.substring(2, 4));
+            if (minutes > 59) {
+                value = value.substring(0, 2) + '59';
+            }
+        }
+        
+        // Format as HH:MM
+        if (value.length >= 4) {
+            value = value.substring(0, 2) + ':' + value.substring(2, 4);
+        } else if (value.length >= 2) {
+            value = value.substring(0, 2) + ':' + value.substring(2);
+        }
+        
+        return value;
+    }
+    
+    // Add input handlers for time fields
+    const timeInputs = document.querySelectorAll('.time-input');
+    timeInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            this.value = formatTimeInput(this);
+        });
+        
+        input.addEventListener('keypress', function(e) {
+            // Allow only numbers and colon
+            if (!/[\d:]/.test(e.key)) {
+                e.preventDefault();
+            }
+        });
+        
+        input.addEventListener('blur', function() {
+            // Ensure proper format when leaving field
+            const timeFormat = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+            if (!timeFormat.test(this.value)) {
+                this.value = '';
+            }
+        });
+    });
+    
+    // Form submission validation
+    form.addEventListener('submit', function(event) {
+        const startTime = document.getElementById('start_time').value;
+        const endTime = document.getElementById('end_time').value;
+        
+        // Validate time format
+        const timeFormat = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        if (!timeFormat.test(startTime) || !timeFormat.test(endTime)) {
+            event.preventDefault();
+            alert('Please enter valid times in 24-hour format (HH:MM)');
+            return;
+        }
+        
+        // Compare start and end times
+        const [startHour, startMinute] = startTime.split(':').map(Number);
+        const [endHour, endMinute] = endTime.split(':').map(Number);
+        
+        if (startHour > endHour || (startHour === endHour && startMinute >= endMinute)) {
+            event.preventDefault();
+            alert('End time must be later than start time');
+            return;
+        }
+    });
+});
+</script>
+{% endblock %}

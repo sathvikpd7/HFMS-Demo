@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">System Diagnostics</h2>
+    
+    <div class="alert alert-info">
+        <p>This page helps diagnose common problems with the application.</p>
+        <p><strong>If you're seeing errors, check the red sections below for issues.</strong></p>
+    </div>
+
+    <!-- Database Status -->
+    <div class="card mb-4 {% if 'Error' in db_status %}border-danger{% else %}border-success{% endif %}">
+        <div class="card-header {% if 'Error' in db_status %}bg-danger text-white{% else %}bg-success text-white{% endif %}">
+            <h4>Database Status</h4>
+        </div>
+        <div class="card-body">
+            <p><strong>Status:</strong> {{ db_status }}</p>
+            <p><strong>Users Count:</strong> {{ users_count }}</p>
+            <p><strong>Admin Count:</strong> {{ admin_count }}</p>
+            
+            {% if 'Error' in db_status %}
+            <div class="alert alert-danger">
+                <h5>Troubleshooting Steps:</h5>
+                <ol>
+                    <li>Make sure the database file exists and has proper permissions</li>
+                    <li>Try running <code>python run.py</code> to recreate the database</li>
+                    <li>If using SQLite, check if the database file is locked by another process</li>
+                </ol>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Directory Status -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h4>Directory Status</h4>
+        </div>
+        <div class="card-body">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Directory</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="{% if static_dir %}table-success{% else %}table-danger{% endif %}">
+                        <td>static/</td>
+                        <td>
+                            {% if static_dir %}
+                                <span class="badge bg-success">Exists</span>
+                            {% else %}
+                                <span class="badge bg-danger">Missing</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr class="{% if templates_dir %}table-success{% else %}table-danger{% endif %}">
+                        <td>templates/</td>
+                        <td>
+                            {% if templates_dir %}
+                                <span class="badge bg-success">Exists</span>
+                            {% else %}
+                                <span class="badge bg-danger">Missing</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr class="{% if qrcodes_dir %}table-success{% else %}table-danger{% endif %}">
+                        <td>static/qrcodes/</td>
+                        <td>
+                            {% if qrcodes_dir %}
+                                <span class="badge bg-success">Exists</span>
+                            {% else %}
+                                <span class="badge bg-danger">Missing</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            {% if not static_dir or not templates_dir or not qrcodes_dir %}
+            <div class="alert alert-danger">
+                <h5>Troubleshooting Steps:</h5>
+                <ol>
+                    <li>Create the missing directories manually</li>
+                    <li>Run <code>python run.py</code> to create the directories automatically</li>
+                    <li>Make sure the application has write permissions to create these directories</li>
+                </ol>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Template Files Status -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h4>Template Files Status</h4>
+        </div>
+        <div class="card-body">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>File</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file, exists in template_files.items() %}
+                    <tr class="{% if exists %}table-success{% else %}table-danger{% endif %}">
+                        <td>templates/{{ file }}</td>
+                        <td>
+                            {% if exists %}
+                                <span class="badge bg-success">Exists</span>
+                            {% else %}
+                                <span class="badge bg-danger">Missing</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            {% if not all(template_files.values()) %}
+            <div class="alert alert-danger">
+                <h5>Troubleshooting Steps:</h5>
+                <ol>
+                    <li>Check that all template files are in the correct directory</li>
+                    <li>Make sure file permissions allow the application to read these files</li>
+                    <li>Re-download or recreate the missing template files</li>
+                </ol>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="row mt-4 mb-5">
+        <div class="col-md-4">
+            <a href="{{ url_for('index') }}" class="btn btn-primary w-100">Go to Home Page</a>
+        </div>
+        <div class="col-md-4">
+            <a href="{{ url_for('test_admin') }}" class="btn btn-info w-100">Test Admin Access</a>
+        </div>
+        <div class="col-md-4">
+            <a href="javascript:window.location.reload();" class="btn btn-success w-100">Refresh Diagnostics</a>
+        </div>
+    </div>
+</div>
+{% endblock %} 
