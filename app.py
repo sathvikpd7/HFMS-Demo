@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import qrcode
 import os
 from PIL import Image
@@ -47,6 +47,18 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+def format_date_for_input(d):
+    """Format a date object for HTML date input (YYYY-MM-DD)"""
+    return d.strftime('%Y-%m-%d')
+
+def parse_date_str(date_str):
+    """Parse a date string (YYYY-MM-DD) into a date object"""
+    return datetime.strptime(date_str, '%Y-%m-%d').date()
+
+def get_current_date():
+    """Get current date as a date object"""
+    return date.today()
+
 class MealBooking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -54,6 +66,20 @@ class MealBooking(db.Model):
     date = db.Column(db.Date, nullable=False)
     qr_code_path = db.Column(db.String(200))
     is_attended = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def formatted_date(self):
+        """Return the date formatted for display"""
+        return self.date.strftime('%B %d, %Y')  # e.g., April 21, 2025
+        
+    @property
+    def date_for_input(self):
+        """Return the date formatted for HTML date input"""
+        return format_date_for_input(self.date)
+
+    def __repr__(self):
+        return f'<MealBooking {self.id} for {self.user_id} on {self.date} ({self.meal_type})>'
 
 class Feedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -91,37 +117,37 @@ class Timetable(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-def generate_qr_code(user_id, meal_type, date):
+def generate_qr_code(user_id, meal_type, date_str):
     """Generate and save QR code"""
     try:
-        # Create QR code instance
+        # Create QR code data string
+        qr_data = f"{user_id}|{meal_type}|{date_str}"
+        
+        # Create QR code instance with better error correction
         qr = qrcode.QRCode(
             version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            error_correction=qrcode.constants.ERROR_CORRECT_H,  # Highest error correction
             box_size=10,
             border=4,
         )
         
-        # Data to encode - use pipe separator for easier parsing
-        data = f"{user_id}|{meal_type}|{date}"
-        qr.add_data(data)
+        # Add the data
+        qr.add_data(qr_data)
         qr.make(fit=True)
         
-        # Create QR code image
-        img = qr.make_image(fill_color="black", back_color="white")
+        # Create QR code image with a white background
+        qr_image = qr.make_image(fill_color="black", back_color="white")
         
-        # Make sure directory exists
-        os.makedirs('static/qrcodes', exist_ok=True)
-        
-        # Generate filename
-        filename = f"qr_{user_id}_{meal_type}_{date}.png"
+        # Create a unique filename
+        filename = f"qr_{user_id}_{meal_type}_{date_str}.png"
         filepath = os.path.join('static', 'qrcodes', filename)
         
         # Save the image
-        img.save(filepath)
+        qr_image.save(filepath)
         
-        # Return the path relative to static folder for template use
-        return f"/{filepath}"
+        # Return the relative path
+        return os.path.join('static', 'qrcodes', filename)
+        
     except Exception as e:
         print(f"Error generating QR code: {str(e)}")
         return None
@@ -232,90 +258,85 @@ def user_dashboard():
     if current_user.is_admin:
         return redirect(url_for('admin_dashboard'))
     
+    today = get_current_date()
+    today_str = format_date_for_input(today)
+    
     # Get user's bookings
-    bookings = MealBooking.query.filter_by(user_id=current_user.id).order_by(MealBooking.date.desc()).all()
+    bookings = MealBooking.query.filter_by(user_id=current_user.id).order_by(MealBooking.date).all()
     
-    # Get user's feedbacks
-    feedbacks = Feedback.query.filter_by(user_id=current_user.id).order_by(Feedback.date.desc()).all()
+    # Split bookings into upcoming and past
+    upcoming_bookings = []
+    past_bookings = []
+    for booking in bookings:
+        if booking.date >= today:
+            upcoming_bookings.append(booking)
+        else:
+            past_bookings.append(booking)
     
-    # Get today's date for comparisons and date input min attribute
-    today = datetime.now().date()
-    today_str = today.strftime('%Y-%m-%d')
-    
-    # Get timetable data
-    timetable = Timetable.query.order_by(
-        case(
-            (Timetable.day == 'Monday', 1),
-            (Timetable.day == 'Tuesday', 2),
-            (Timetable.day == 'Wednesday', 3),
-            (Timetable.day == 'Thursday', 4),
-            (Timetable.day == 'Friday', 5),
-            (Timetable.day == 'Saturday', 6),
-            (Timetable.day == 'Sunday', 7)
-        ),
-        Timetable.meal_type
-    ).all()
-    
-    return render_template('user_dashboard.html', 
-                         bookings=bookings, 
-                         feedbacks=feedbacks,
-                         today_date=today,  # Pass the date object for comparisons
-                         today_str=today_str,  # Pass the string for the date input
-                         timetable=timetable)
+    return render_template('user_dashboard.html',
+                         upcoming_bookings=upcoming_bookings,
+                         past_bookings=past_bookings,
+                         today_date=today,
+                         today_str=today_str)
 
 @app.route('/book_meal', methods=['POST'])
 @login_required
 def book_meal():
+    if current_user.is_admin:
+        flash('Admins cannot book meals')
+        return redirect(url_for('admin_dashboard'))
+    
     try:
-        meal_type = request.form['meal_type']
-        date_str = request.form['date']
+        meal_type = request.form.get('meal_type')
+        date_str = request.form.get('date')
         
-        # Validate meal type
-        if meal_type not in ['breakfast', 'lunch', 'dinner']:
-            flash('Invalid meal type')
+        if not meal_type or not date_str:
+            flash('Please provide all required fields')
             return redirect(url_for('user_dashboard'))
         
-        # Validate and parse date
-        try:
-            date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        except ValueError:
-            flash('Invalid date format')
+        booking_date = parse_date_str(date_str)
+        today = get_current_date()
+        
+        # Validate the date is not in the past
+        if booking_date < today:
+            flash('Cannot book meals for past dates')
             return redirect(url_for('user_dashboard'))
-            
+        
         # Check if booking already exists
         existing_booking = MealBooking.query.filter_by(
             user_id=current_user.id,
             meal_type=meal_type,
-            date=date
+            date=booking_date
         ).first()
         
         if existing_booking:
             flash('You have already booked this meal')
             return redirect(url_for('user_dashboard'))
         
-        # Generate QR code
-        qr_path = generate_qr_code(current_user.id, meal_type, date.strftime('%Y-%m-%d'))
-        
+        # Generate QR code for the booking
+        qr_path = generate_qr_code(current_user.id, meal_type, date_str)
         if not qr_path:
-            flash('Error generating QR code')
+            flash('Error generating QR code. Please try again.')
             return redirect(url_for('user_dashboard'))
         
         # Create and save the booking with QR code path
         booking = MealBooking(
             user_id=current_user.id,
             meal_type=meal_type,
-            date=date,
-            qr_code_path=qr_path
+            date=booking_date,
+            qr_code_path=qr_path,
+            created_at=datetime.utcnow()
         )
         
         db.session.add(booking)
         db.session.commit()
         
-        flash('Meal booked successfully!')
+        flash('Meal booked successfully! Click "View QR Code" to see your booking QR.')
         return redirect(url_for('user_dashboard'))
         
     except Exception as e:
         db.session.rollback()
+        print(f"Error booking meal: {str(e)}")
         flash(f'Error booking meal: {str(e)}')
         return redirect(url_for('user_dashboard'))
 
@@ -459,21 +480,35 @@ def verify_booking():
         data = request.json
         user_id = data.get('user_id')
         meal_type = data.get('meal_type')
-        date = datetime.strptime(data.get('date'), '%Y-%m-%d').date()
+        date_str = data.get('date')
+        
+        if not all([user_id, meal_type, date_str]):
+            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+            
+        try:
+            booking_date = parse_date_str(date_str)
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid date format'}), 400
         
         booking = MealBooking.query.filter_by(
             user_id=user_id,
             meal_type=meal_type,
-            date=date
+            date=booking_date
         ).first()
         
         if booking:
             if booking.is_attended:
-                return jsonify({'success': False, 'message': 'Booking already verified'})
+                return jsonify({
+                    'success': False,
+                    'message': f'Booking already verified for {booking.formatted_date}'
+                })
             
             booking.is_attended = True
             db.session.commit()
-            return jsonify({'success': True, 'message': 'Booking verified successfully'})
+            return jsonify({
+                'success': True,
+                'message': f'Booking verified successfully for {booking.formatted_date}'
+            })
         else:
             return jsonify({'success': False, 'message': 'Booking not found'})
             

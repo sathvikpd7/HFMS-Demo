@@ -145,47 +145,57 @@
         
         <!-- Right Column: Bookings -->
         <div class="col-md-6">
+            <!-- Upcoming Bookings -->
             <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">Your Bookings</h4>
-                    <div class="btn-group">
-                        <button class="btn btn-outline-primary btn-sm" id="showUpcoming">Upcoming</button>
-                        <button class="btn btn-outline-primary btn-sm" id="showPast">Past</button>
-                    </div>
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-calendar-check me-2"></i>Upcoming Bookings</h4>
                 </div>
                 <div class="card-body">
-                    {% if current_user.bookings %}
-                        <div class="bookings-container">
-                            {% for booking in current_user.bookings|sort(attribute='date', reverse=true) %}
-                                <div class="booking-card {% if booking.date < today_date %}past-booking{% else %}upcoming-booking{% endif %} mb-3">
-                                    <div class="booking-details p-3 border rounded {% if booking.is_attended %}bg-success bg-opacity-10{% endif %}">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div>
-                                                <h5 class="mb-1">{{ booking.meal_type|title }}</h5>
-                                                <p class="mb-2">
-                                                    <i class="fas fa-calendar-alt me-2"></i>
-                                                    {{ booking.date.strftime('%d %B, %Y') }}
-                                                </p>
-                                                <span class="badge {% if booking.is_attended %}bg-success{% else %}bg-warning{% endif %}">
-                                                    {% if booking.is_attended %}
-                                                        <i class="fas fa-check me-1"></i> Verified
-                                                    {% else %}
-                                                        <i class="fas fa-clock me-1"></i> Pending
-                                                    {% endif %}
-                                                </span>
+                    {% if upcoming_bookings %}
+                        <div class="list-group booking-list">
+                            {% for booking in upcoming_bookings %}
+                                <div class="list-group-item list-group-item-action p-3">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-8">
+                                            <h5 class="mb-1">
+                                                {% if booking.meal_type == 'breakfast' %}
+                                                    <i class="fas fa-sun text-warning me-2"></i>
+                                                {% elif booking.meal_type == 'lunch' %}
+                                                    <i class="fas fa-cloud-sun text-primary me-2"></i>
+                                                {% else %}
+                                                    <i class="fas fa-moon text-info me-2"></i>
+                                                {% endif %}
+                                                {{ booking.meal_type|title }} - {{ booking.formatted_date }}
+                                            </h5>
+                                            <div class="mb-2">
+                                                {% if booking.is_attended %}
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check-circle me-1"></i> Verified
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-warning text-dark">
+                                                        <i class="fas fa-clock me-1"></i> Pending Verification
+                                                    </span>
+                                                {% endif %}
                                             </div>
-                                            {% if booking.qr_code_path and not booking.is_attended %}
-                                                <div class="text-end">
-                                                    <button class="btn btn-primary btn-sm show-qr-code" 
-                                                            data-qr-path="{{ booking.qr_code_path }}"
-                                                            data-meal-type="{{ booking.meal_type|title }}"
-                                                            data-date="{{ booking.date.strftime('%d %B, %Y') }}"
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#qrModal">
-                                                        <i class="fas fa-qrcode me-1"></i>
-                                                        Show QR Code
-                                                    </button>
-                                                </div>
+                                            <small class="text-muted">
+                                                <i class="fas fa-calendar me-1"></i> Booked: {{ booking.created_at.strftime('%B %d, %Y %I:%M %p') }}
+                                            </small>
+                                        </div>
+                                        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                                            {% if booking.qr_code_path %}
+                                                <button class="btn btn-primary btn-qr" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#qrCodeModal"
+                                                        data-qr-path="{{ booking.qr_code_path }}"
+                                                        data-meal-info="{{ booking.meal_type|title }} - {{ booking.formatted_date }}"
+                                                        data-booking-id="{{ booking.id }}">
+                                                    <i class="fas fa-qrcode me-2"></i>View QR
+                                                </button>
+                                            {% else %}
+                                                <span class="text-danger">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>QR Not Available
+                                                </span>
                                             {% endif %}
                                         </div>
                                     </div>
@@ -193,9 +203,60 @@
                             {% endfor %}
                         </div>
                     {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-calendar-alt fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">No Upcoming Bookings</h5>
+                            <p class="text-muted mb-0">Use the booking form to schedule your meals</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Past Bookings -->
+            <div class="card">
+                <div class="card-header">
+                    <h4>Past Bookings</h4>
+                </div>
+                <div class="card-body">
+                    {% if past_bookings %}
+                        <div class="list-group">
+                            {% for booking in past_bookings %}
+                                <div class="list-group-item list-group-item-action flex-column align-items-start">
+                                    <div class="d-flex w-100 justify-content-between align-items-center mb-2">
+                                        <div>
+                                            <h5 class="mb-1">{{ booking.meal_type|title }} - {{ booking.formatted_date }}</h5>
+                                            {% if booking.is_attended %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check me-1"></i> Attended
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-times me-1"></i> Not Attended
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        {% if booking.qr_code_path %}
+                                            <button class="btn btn-outline-secondary btn-sm"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#qrCodeModal"
+                                                    data-qr-path="{{ booking.qr_code_path }}"
+                                                    data-meal-info="{{ booking.meal_type|title }} - {{ booking.formatted_date }}">
+                                                <i class="fas fa-history me-1"></i> View Past QR
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                    <div class="booking-details">
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i> Booked on: {{ booking.created_at.strftime('%B %d, %Y %I:%M %p') }}
+                                        </small>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
                         <div class="text-center py-4">
-                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
-                            <p class="text-muted">No bookings found. Use the form to book your meals.</p>
+                            <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No past bookings</p>
                         </div>
                     {% endif %}
                 </div>
@@ -205,161 +266,109 @@
 </div>
 
 <!-- QR Code Modal -->
-<div class="modal fade" id="qrModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="qrCodeModal" tabindex="-1" aria-labelledby="qrCodeModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Your QR Code</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="qrCodeModalLabel">
+                    <i class="fas fa-qrcode me-2"></i>Meal QR Code
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body text-center">
-                <div id="qrCodeDetails" class="mb-3">
-                    <h6 id="qrMealType" class="mb-1"></h6>
-                    <p id="qrDate" class="text-muted small"></p>
+            <div class="modal-body">
+                <!-- Loading Spinner -->
+                <div id="qrLoadingSpinner" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading QR Code...</p>
                 </div>
-                <img id="qrCodeImage" src="" alt="QR Code" class="img-fluid">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="downloadQRCode()">
-                    <i class="fas fa-download me-1"></i> Download
-                </button>
+                
+                <!-- Error Message -->
+                <div id="qrErrorMessage" class="alert alert-danger d-none">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    Failed to load QR code. Please try again.
+                </div>
+                
+                <!-- QR Code Content -->
+                <div id="qrContent" class="d-none">
+                    <div class="text-center">
+                        <h6 id="modalMealInfo" class="text-primary mb-3"></h6>
+                        <div class="qr-container mb-4">
+                            <img id="qrCodeImage" src="" alt="QR Code" class="img-fluid rounded shadow-sm">
+                        </div>
+                        <div class="qr-instructions mb-3">
+                            <p class="text-muted small mb-0">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Present this QR code at the dining hall for verification
+                            </p>
+                        </div>
+                        <div class="btn-group">
+                            <a id="downloadQR" href="#" class="btn btn-primary" download>
+                                <i class="fas fa-download me-2"></i>Download
+                            </a>
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                <i class="fas fa-times me-2"></i>Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<style>
-.rating .btn-group {
-    display: flex;
-    flex-direction: row-reverse;
-    justify-content: flex-end;
-}
+{% endblock %}
 
-.rating .btn-outline-warning {
-    margin: 0 2px;
-}
-
-.rating .btn-check:checked + .btn-outline-warning {
-    background-color: #ffc107;
-    color: #000;
-}
-
-.qr-code-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.list-group-item {
-    transition: background-color 0.3s;
-}
-
-.list-group-item:hover {
-    background-color: #f8f9fa;
-}
-
-/* Additional styles for bookings */
-.booking-card {
-    transition: transform 0.3s;
-}
-
-.booking-card:hover {
-    transform: translateY(-2px);
-}
-
-.past-booking {
-    display: none;
-}
-</style>
-
+{% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle feedback form submission
-    const feedbackForm = document.getElementById('feedbackFormElement');
-    if (feedbackForm) {
-        feedbackForm.addEventListener('submit', function(e) {
-            e.preventDefault();
+    const qrCodeModal = document.getElementById('qrCodeModal');
+    
+    if (qrCodeModal) {
+        qrCodeModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const qrPath = button.getAttribute('data-qr-path');
+            const mealInfo = button.getAttribute('data-meal-info');
             
-            fetch(this.action, {
-                method: 'POST',
-                body: new FormData(this)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Show success message
-                    const alert = document.createElement('div');
-                    alert.className = 'alert alert-success mt-3';
-                    alert.textContent = 'Thank you for your feedback!';
-                    feedbackForm.appendChild(alert);
-                    
-                    // Reset form
-                    feedbackForm.reset();
-                    
-                    // Close the collapse after 2 seconds
-                    setTimeout(() => {
-                        bootstrap.Collapse.getInstance(document.getElementById('feedbackForm')).hide();
-                        // Reload page to show new feedback
-                        location.reload();
-                    }, 2000);
-                } else {
-                    throw new Error(data.message || 'Error submitting feedback');
-                }
-            })
-            .catch(error => {
-                const alert = document.createElement('div');
-                alert.className = 'alert alert-danger mt-3';
-                alert.textContent = error.message;
-                feedbackForm.appendChild(alert);
-            });
-        });
-    }
-
-    // Handle QR code display
-    document.querySelectorAll('.show-qr-code').forEach(button => {
-        button.addEventListener('click', function() {
-            const path = this.getAttribute('data-qr-path');
-            const mealType = this.getAttribute('data-meal-type');
-            const date = this.getAttribute('data-date');
+            const qrCodeImage = document.getElementById('qrCodeImage');
+            const modalMealInfo = document.getElementById('modalMealInfo');
+            const downloadQR = document.getElementById('downloadQR');
+            const loadingSpinner = document.getElementById('qrLoadingSpinner');
+            const errorMessage = document.getElementById('qrErrorMessage');
+            const qrContent = document.getElementById('qrContent');
             
-            document.getElementById('qrMealType').textContent = mealType;
-            document.getElementById('qrDate').textContent = date;
-            document.getElementById('qrCodeImage').src = path;
+            // Reset modal state
+            loadingSpinner.classList.remove('d-none');
+            errorMessage.classList.add('d-none');
+            qrContent.classList.add('d-none');
+            
+            if (qrCodeImage && qrPath) {
+                qrCodeImage.onload = function() {
+                    loadingSpinner.classList.add('d-none');
+                    qrContent.classList.remove('d-none');
+                };
+                
+                qrCodeImage.onerror = function() {
+                    loadingSpinner.classList.add('d-none');
+                    errorMessage.classList.remove('d-none');
+                };
+                
+                // Set QR code image source with cache-busting
+                const cacheBuster = new Date().getTime();
+                qrCodeImage.src = '/' + qrPath + '?v=' + cacheBuster;
+                modalMealInfo.textContent = mealInfo;
+                downloadQR.href = '/' + qrPath;
+                downloadQR.download = 'QR_' + mealInfo.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.png';
+            }
         });
-    });
-
-    // Function to download QR code
-    window.downloadQRCode = function() {
-        const img = document.getElementById('qrCodeImage');
-        const mealType = document.getElementById('qrMealType').textContent;
-        const date = document.getElementById('qrDate').textContent;
         
-        const link = document.createElement('a');
-        link.download = `QR_${mealType}_${date}.png`;
-        link.href = img.src;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Reset modal content when hidden
+        qrCodeModal.addEventListener('hidden.bs.modal', function() {
+            const qrCodeImage = document.getElementById('qrCodeImage');
+            qrCodeImage.src = '';
+        });
     }
-
-    // Filter bookings
-    document.getElementById('showUpcoming').addEventListener('click', function() {
-        document.querySelectorAll('.past-booking').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('.upcoming-booking').forEach(el => el.style.display = 'block');
-        this.classList.add('active');
-        document.getElementById('showPast').classList.remove('active');
-    });
-
-    document.getElementById('showPast').addEventListener('click', function() {
-        document.querySelectorAll('.upcoming-booking').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('.past-booking').forEach(el => el.style.display = 'block');
-        this.classList.add('active');
-        document.getElementById('showUpcoming').classList.remove('active');
-    });
-
-    // Show upcoming bookings by default
-    document.getElementById('showUpcoming').click();
 });
 </script>
 {% endblock %}

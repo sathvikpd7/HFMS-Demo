@@ -33,6 +33,7 @@ def setup_database():
             date DATE NOT NULL,
             qr_code_path VARCHAR(200),
             is_attended BOOLEAN DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES user (id)
         );
 
