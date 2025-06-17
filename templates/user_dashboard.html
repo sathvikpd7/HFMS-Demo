@@ -189,7 +189,8 @@
                                                         data-bs-target="#qrCodeModal"
                                                         data-qr-path="{{ booking.qr_code_path }}"
                                                         data-meal-info="{{ booking.meal_type|title }} - {{ booking.formatted_date }}"
-                                                        data-booking-id="{{ booking.id }}">
+                                                        data-booking-id="{{ booking.id }}"
+                                                        onclick="console.log('QR Code Path:', '{{ booking.qr_code_path }}')">
                                                     <i class="fas fa-qrcode me-2"></i>View QR
                                                 </button>
                                             {% else %}
@@ -295,7 +296,7 @@
                     <div class="text-center">
                         <h6 id="modalMealInfo" class="text-primary mb-3"></h6>
                         <div class="qr-container mb-4">
-                            <img id="qrCodeImage" src="" alt="QR Code" class="img-fluid rounded shadow-sm">
+                            <img id="qrCodeImage" src="" alt="QR Code" class="img-fluid rounded shadow-sm" style="max-width: 250px;">
                         </div>
                         <div class="qr-instructions mb-3">
                             <p class="text-muted small mb-0">
@@ -323,6 +324,7 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // QR Code Modal handling
     const qrCodeModal = document.getElementById('qrCodeModal');
     
     if (qrCodeModal) {
@@ -338,6 +340,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const errorMessage = document.getElementById('qrErrorMessage');
             const qrContent = document.getElementById('qrContent');
             
+            console.log('QR Path:', qrPath); // Debug log
+            
             // Reset modal state
             loadingSpinner.classList.remove('d-none');
             errorMessage.classList.add('d-none');
@@ -345,11 +349,13 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (qrCodeImage && qrPath) {
                 qrCodeImage.onload = function() {
+                    console.log('QR code loaded successfully'); // Debug log
                     loadingSpinner.classList.add('d-none');
                     qrContent.classList.remove('d-none');
                 };
                 
                 qrCodeImage.onerror = function() {
+                    console.error('Failed to load QR code'); // Debug log
                     loadingSpinner.classList.add('d-none');
                     errorMessage.classList.remove('d-none');
                 };
@@ -367,6 +373,43 @@ document.addEventListener('DOMContentLoaded', function() {
         qrCodeModal.addEventListener('hidden.bs.modal', function() {
             const qrCodeImage = document.getElementById('qrCodeImage');
             qrCodeImage.src = '';
+        });
+    }
+
+    // Feedback form handling
+    const feedbackForm = document.getElementById('feedbackFormElement');
+    if (feedbackForm) {
+        feedbackForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(feedbackForm);
+            
+            fetch('/submit_feedback', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    alert(data.message);
+                    // Collapse the form
+                    const feedbackCollapse = bootstrap.Collapse.getInstance(document.getElementById('feedbackForm'));
+                    if (feedbackCollapse) {
+                        feedbackCollapse.hide();
+                    }
+                    // Reset the form
+                    feedbackForm.reset();
+                    // Reload the page to show the new feedback
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Error submitting feedback');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while submitting feedback');
+            });
         });
     }
 });

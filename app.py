@@ -87,6 +87,9 @@ class Feedback(db.Model):
     rating = db.Column(db.Integer, nullable=False)  # Rating from 1-5
     comment = db.Column(db.Text)
     date = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Add relationship to User model
+    user = db.relationship('User', backref='feedbacks', lazy=True)
 
     def __repr__(self):
         return f'<Feedback {self.id} from User {self.user_id}>'
@@ -117,6 +120,15 @@ class Timetable(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+@app.route('/qrcodes/<path:filename>')
+def serve_qr_code(filename):
+    """Serve QR code images from the static/qrcodes directory"""
+    try:
+        return send_from_directory('static/qrcodes', filename)
+    except Exception as e:
+        print(f"Error serving QR code: {str(e)}")
+        return "QR code not found", 404
+
 def generate_qr_code(user_id, meal_type, date_str):
     """Generate and save QR code"""
     try:
@@ -140,13 +152,16 @@ def generate_qr_code(user_id, meal_type, date_str):
         
         # Create a unique filename
         filename = f"qr_{user_id}_{meal_type}_{date_str}.png"
-        filepath = os.path.join('static', 'qrcodes', filename)
+        
+        # Make sure the qrcodes directory exists
+        os.makedirs('static/qrcodes', exist_ok=True)
         
         # Save the image
+        filepath = os.path.join('static', 'qrcodes', filename)
         qr_image.save(filepath)
         
-        # Return the relative path
-        return os.path.join('static', 'qrcodes', filename)
+        # Return the URL path to the QR code
+        return f'qrcodes/{filename}'
         
     except Exception as e:
         print(f"Error generating QR code: {str(e)}")
@@ -751,6 +766,64 @@ def create_admin_user():
         print(f"Error creating admin user: {str(e)}")
         db.session.rollback()
         return None
+
+@app.route('/qr_scanner')
+@login_required
+def qr_scanner():
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('index'))
+    return render_template('qr_scanner.html')
+
+@app.route('/verify_qr', methods=['POST'])
+@login_required
+def verify_qr():
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'Access denied'})
+    
+    data = request.get_json()
+    qr_code = data.get('qr_code')
+    
+    if not qr_code:
+        return jsonify({'success': False, 'message': 'No QR code provided'})
+    
+    try:
+        # Parse QR code (format: <user_id>|<meal_type>|<date>)
+        parts = qr_code.split('|')
+        if len(parts) != 3:
+            return jsonify({'success': False, 'message': 'Invalid QR code format. Expected format: user_id|meal_type|date'})
+        
+        user_id, meal_type, date = parts
+        user_id = int(user_id)
+        
+        # Find the booking
+        booking = MealBooking.query.filter_by(
+            user_id=user_id,
+            meal_type=meal_type,
+            date=datetime.strptime(date, '%Y-%m-%d').date()
+        ).first()
+        
+        if not booking:
+            return jsonify({'success': False, 'message': 'Booking not found'})
+        
+        # Update booking status
+        if not booking.attended:
+            booking.attended = True
+            booking.verified_at = datetime.now()
+            db.session.commit()
+            return jsonify({
+                'success': True, 
+                'message': f'Verified: {meal_type.capitalize()} for user {user_id} on {date}'
+            })
+        else:
+            return jsonify({
+                'success': False, 
+                'message': 'This QR code has already been verified'
+            })
+            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
 
 if __name__ == '__main__':
     # Create required directories

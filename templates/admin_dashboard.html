@@ -366,57 +366,101 @@
 
         <!-- QR Scanner Tab -->
         <div class="tab-pane fade" id="scanner" role="tabpanel">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="card mb-4 scanner-card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h4 class="mb-0"><i class="fas fa-camera me-2"></i>QR Code Scanner</h4>
-                            <div class="scanner-controls">
-                                <button id="start-scanner" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-camera"></i> Start Scanner
-                                </button>
-                                <button id="stop-scanner" class="btn btn-danger btn-sm" style="display: none;">
-                                    <i class="fas fa-stop"></i> Stop Scanner
-                                </button>
-                            </div>
-                        </div>
-                        <div class="card-body p-0">
-                            <div id="scanner-container">
-                                <!-- Scanner Status -->
-                                <div id="current-scan" class="p-3">
-                                    <div class="alert alert-info d-flex align-items-center">
-                                        <i class="fas fa-info-circle fs-4 me-3"></i>
-                                        <div>Click "Start Scanner" to begin scanning QR codes.</div>
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-qrcode me-2"></i>QR Code Scanner</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Camera Selection Panel -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="camera-controls p-3 bg-light rounded">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6 mb-3 mb-md-0">
+                                        <label for="cameraSelect" class="form-label fw-bold">
+                                            <i class="fas fa-video me-2"></i>Select Camera Device
+                                        </label>
+                                        <select id="cameraSelect" class="form-select">
+                                            <option value="">Loading cameras...</option>
+                                        </select>
                                     </div>
-                                </div>
-                                <!-- Scanner Area -->
-                                <div id="reader-wrapper" class="position-relative">
-                                    <div id="reader"></div>
-                                    <div id="scan-region-highlight" class="d-none"></div>
-                                </div>
-                                <!-- Camera Selection -->
-                                <div id="camera-controls" class="p-3 border-top bg-light">
-                                    <select id="camera-select" class="form-select">
-                                        <option value="">Loading cameras...</option>
-                                    </select>
+                                    <div class="col-md-6">
+                                        <div class="camera-buttons d-flex gap-2">
+                                            <button id="requestCameraBtn" class="btn btn-outline-primary flex-grow-1">
+                                                <i class="fas fa-camera me-2"></i>Request Camera Access
+                                            </button>
+                                            <button id="refreshCamerasBtn" class="btn btn-outline-secondary">
+                                                <i class="fas fa-sync-alt"></i>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Scan History -->
-                <div class="col-md-6">
-                    <div class="card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h4 class="mb-0"><i class="fas fa-history me-2"></i>Scan History</h4>
-                            <button class="btn btn-outline-secondary btn-sm" onclick="clearScanHistory()">
-                                <i class="fas fa-trash-alt"></i> Clear History
-                            </button>
+
+                    <!-- Scanner View -->
+                    <div class="scanner-wrapper mb-3">
+                        <div id="scanner-container" class="scanner-container">
+                            <video id="qrScanner" playsinline autoplay muted></video>
+                            <div class="scanner-overlay">
+                                <div class="scan-frame"></div>
+                                <div class="scan-line"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Scanner Controls -->
+                        <div class="scanner-controls mt-3">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="d-flex gap-2">
+                                        <button id="startScanner" class="btn btn-success flex-grow-1">
+                                            <i class="fas fa-play me-2"></i>Start Scanner
+                                        </button>
+                                        <button id="stopScanner" class="btn btn-danger flex-grow-1 d-none">
+                                            <i class="fas fa-stop me-2"></i>Stop Scanner
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="d-flex gap-2">
+                                        <!-- Removed torch button -->
+                                        <button id="snapshotBtn" class="btn btn-outline-secondary flex-grow-1">
+                                            <i class="fas fa-camera me-2"></i>Take Snapshot
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scan Result -->
+                    <div id="scanResult" class="alert d-none mb-3"></div>
+
+                    <!-- Scan History -->
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Scan History</h5>
+                                <button id="clearHistory" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-trash me-1"></i>Clear History
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body p-0">
-                            <div id="scan-history" class="list-group list-group-flush">
-                                <!-- Scan history items will be added here -->
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0" id="scanHistory">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Time</th>
+                                            <th>User</th>
+                                            <th>Meal</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -513,12 +557,13 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
-<!-- Load JavaScript libraries in the correct order -->
-<!-- jQuery first (if you're using Bootstrap's JS components) -->
+{% block scripts %}
+<!-- jQuery first -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-<!-- Then Bootstrap Bundle with Popper -->
+<!-- Bootstrap Bundle with Popper -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <!-- Chart.js -->
@@ -530,7 +575,7 @@
 <!-- HTML5 QR Code Scanner -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
-<!-- Initialize Dashboard -->
+<!-- Dashboard initialization script -->
 <script>
 // Wait for all libraries to load
 window.addEventListener('load', function() {
@@ -911,497 +956,280 @@ window.addEventListener('load', function() {
 .scan-history-card .list-group-item.error {
     background-color: #f8d7da;
 }
+
+/* New styles for enhanced QR scanner */
+.scanner-wrapper {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+.scanner-container {
+    position: relative;
+    width: 100%;
+    background-color: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    min-height: 600px;
+}
+
+#qrScanner {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1); /* Mirror view for more intuitive camera handling */
+}
+
+.scanner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+}
+
+.scan-frame {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 250px;
+    height: 250px;
+    border: 2px solid rgba(99, 102, 241, 0.8);
+    border-radius: 20px;
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.5);
+}
+
+.scan-line {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 250px;
+    height: 2px;
+    background: #6366f1;
+    animation: scan 2s linear infinite;
+}
+
+@keyframes scan {
+    0% { top: calc(50% - 125px); }
+    50% { top: calc(50% + 125px); }
+    100% { top: calc(50% - 125px); }
+}
+
+.camera-controls {
+    border: 1px solid rgba(0,0,0,0.1);
+}
 </style>
 
-<!-- Add this script section after the existing scripts -->
+<!-- QR Scanner initialization script -->
 <script>
-// Excel Export Function
-function exportTableToExcel(tableId, fileName) {
-    const table = document.getElementById(tableId);
-    if (!table) {
-        console.error('Table not found');
-        return;
-    }
-
-    // Create a workbook
-    const wb = XLSX.utils.book_new();
-    
-    // Convert table to worksheet, excluding action buttons
-    const ws = XLSX.utils.table_to_sheet(table, {
-        raw: true,
-        display: false,
-        skipHidden: true
-    });
-    
-    // Add worksheet to workbook
-    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-    
-    // Save workbook
-    XLSX.writeFile(wb, `${fileName}_${new Date().toISOString().split('T')[0]}.xlsx`);
-}
-
-// Bookings Panel Functions
 document.addEventListener('DOMContentLoaded', function() {
-    // Select All Checkbox Function
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-    if (selectAllCheckbox) {
-        selectAllCheckbox.addEventListener('change', function() {
-            const checkboxes = document.querySelectorAll('.booking-checkbox');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = this.checked;
+    const cameraSelect = document.getElementById('cameraSelect');
+    const requestCameraBtn = document.getElementById('requestCameraBtn');
+    const refreshCamerasBtn = document.getElementById('refreshCamerasBtn');
+    const startButton = document.getElementById('startScanner');
+    const stopButton = document.getElementById('stopScanner');
+    const torchBtn = document.getElementById('torchBtn');
+    const snapshotBtn = document.getElementById('snapshotBtn');
+    const scanResult = document.getElementById('scanResult');
+    const scanHistory = document.getElementById('scanHistory').querySelector('tbody');
+    const video = document.getElementById('qrScanner');
+    
+    let stream = null;
+    let scanner = null;
+
+    // Initialize QR scanner
+    function initScanner() {
+        scanner = new Html5Qrcode("scanner-container", { 
+            verbose: true,
+            formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+        });
+    }
+
+    // Load available cameras
+    async function loadCameras() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            
+            cameraSelect.innerHTML = videoDevices.length
+                ? videoDevices.map(device => 
+                    `<option value="${device.deviceId}">
+                        ${device.label || `Camera ${cameraSelect.options.length + 1}`}
+                    </option>`
+                ).join('')
+                : '<option value="">No cameras found</option>';
+                
+            // Enable/disable controls based on camera availability
+            startButton.disabled = !videoDevices.length;
+            requestCameraBtn.disabled = !videoDevices.length;
+            
+        } catch (err) {
+            console.error('Error loading cameras:', err);
+            cameraSelect.innerHTML = '<option value="">Error loading cameras</option>';
+            showResult('Error accessing cameras. Please check permissions.', false);
+        }
+    }
+
+    // Request camera permissions explicitly
+    async function requestCameraAccess() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
             });
-        });
+            stream.getTracks().forEach(track => track.stop()); // Stop the stream immediately
+            await loadCameras(); // Reload camera list after getting permissions
+            showResult('Camera access granted!', true);
+        } catch (err) {
+            console.error('Error requesting camera:', err);
+            showResult('Failed to get camera access. Please check your browser settings.', false);
+        }
     }
 
-    // Verify Selected Function
-    const verifySelectedBtn = document.getElementById('verifySelected');
-    if (verifySelectedBtn) {
-        verifySelectedBtn.addEventListener('click', async function() {
-            const selectedBoxes = document.querySelectorAll('.booking-checkbox:checked');
-            if (selectedBoxes.length === 0) {
-                alert('Please select bookings to verify');
+    // Start scanning
+    async function startScanning() {
+        try {
+            const deviceId = cameraSelect.value;
+            if (!deviceId) {
+                showResult('Please select a camera', false);
                 return;
             }
 
-            const bookingIds = Array.from(selectedBoxes).map(box => box.dataset.bookingId);
-            try {
-                const response = await fetch('/verify_multiple_bookings', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ booking_ids: bookingIds })
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    alert(result.message);
-                    location.reload();
-                } else {
-                    alert('Error: ' + result.message);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error verifying bookings');
-            }
-        });
-    }
-
-    // Unverify Selected Function
-    const unverifySelectedBtn = document.getElementById('unverifySelected');
-    if (unverifySelectedBtn) {
-        unverifySelectedBtn.addEventListener('click', async function() {
-            const selectedBoxes = document.querySelectorAll('.booking-checkbox:checked');
-            if (selectedBoxes.length === 0) {
-                alert('Please select bookings to unverify');
-                return;
-            }
-
-            const bookingIds = Array.from(selectedBoxes).map(box => box.dataset.bookingId);
-            try {
-                const response = await fetch('/unverify_multiple_bookings', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ booking_ids: bookingIds })
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    alert(result.message);
-                    location.reload();
-                } else {
-                    alert('Error: ' + result.message);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error unverifying bookings');
-            }
-        });
-    }
-
-    // Individual Verify Button Function
-    document.querySelectorAll('.verify-booking').forEach(button => {
-        button.addEventListener('click', async function() {
-            const bookingData = {
-                user_id: this.dataset.userId,
-                meal_type: this.dataset.mealType,
-                date: this.dataset.date
+            const config = {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.33333,
             };
 
-            try {
-                const response = await fetch('/verify_booking', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(bookingData)
-                });
+            await scanner.start(
+                { deviceId: { exact: deviceId } },
+                config,
+                handleScan,
+                handleError
+            );
 
-                const result = await response.json();
-                if (result.success) {
-                    alert('Booking verified successfully');
-                    location.reload();
-                } else {
-                    alert('Error: ' + result.message);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error verifying booking');
-            }
-        });
-    });
+            updateControls(true);
+            showResult('Scanner started. Please show a QR code.', true);
 
-    // Individual Unverify Button Function
-    document.querySelectorAll('.unverify-booking').forEach(button => {
-        button.addEventListener('click', async function() {
-            const bookingId = this.dataset.bookingId;
-            try {
-                const response = await fetch(`/unverify_booking/${bookingId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    alert('Booking unverified successfully');
-                    location.reload();
-                } else {
-                    alert('Error: ' + result.message);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error unverifying booking');
-            }
-        });
-    });
-
-    // Delete User Function
-    document.querySelectorAll('.delete-user-form').forEach(form => {
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-                try {
-                    const response = await fetch(this.action, {
-                        method: 'POST'
-                    });
-                    if (response.ok) {
-                        alert('User deleted successfully');
-                        location.reload();
-                    } else {
-                        alert('Error deleting user');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Error deleting user');
-                }
-            }
-        });
-    });
-
-    // Format dates in tables
-    function formatDate(dateString) {
-        const options = { 
-            year: 'numeric', 
-            month: '2-digit', 
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        };
-        return new Date(dateString).toLocaleString('en-US', options);
+        } catch (err) {
+            console.error('Error starting scanner:', err);
+            showResult('Error starting scanner: ' + err.message, false);
+        }
     }
 
-    // Format dates in bookings table
-    document.querySelectorAll('.booking-date').forEach(cell => {
-        const originalDate = cell.textContent.trim();
-        if (originalDate) {
-            cell.textContent = formatDate(originalDate).split(',')[0]; // Show only the date part
+    // Stop scanning
+    async function stopScanning() {
+        try {
+            await scanner.stop();
+            updateControls(false);
+            showResult('Scanner stopped', true);
+        } catch (err) {
+            console.error('Error stopping scanner:', err);
         }
-    });
-
-    // Format dates in feedback table
-    document.querySelectorAll('.feedback-date').forEach(cell => {
-        const originalDate = cell.textContent.trim();
-        if (originalDate) {
-            cell.textContent = formatDate(originalDate);
-        }
-    });
-});
-</script>
-{% endblock %}
-
-{% block scripts %}
-<!-- Include Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- Include XLSX library for Excel export -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-<!-- Include QR Scanner library -->
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-
-<script>
-// QR Scanner Implementation
-let html5QrCode = null;
-let currentCamera = null;
-let scanHistory = [];
-
-// Function to handle successful QR code scans
-function onScanSuccess(decodedText, decodedResult) {
-    console.log('QR Code detected:', decodedText);
-    try {
-        // Parse the QR code data
-        const data = JSON.parse(decodedText);
-        
-        // Add to scan history
-        addToScanHistory({
-            text: `${data.meal_type} - ${data.date}`,
-            timestamp: new Date().toLocaleString()
-        });
-        
-        // Verify the booking
-        verifyBooking(data);
-        
-        // Play success sound
-        playSound('success');
-        
-    } catch (err) {
-        console.error('Error processing QR code:', err);
-        document.getElementById('current-scan').innerHTML = `
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                Invalid QR Code format
-            </div>`;
-        playSound('error');
     }
-}
 
-// Function to handle QR code scan failures
-function onScanFailure(error) {
-    // We can ignore scan failures as they're normal when no QR code is in view
-    console.debug('QR Scan failure:', error);
-}
-
-// Initialize the QR Scanner
-async function initializeScanner() {
-    try {
-        // Show loading message
-        document.getElementById('current-scan').innerHTML = `
-            <div class="alert alert-info d-flex align-items-center">
-                <i class="fas fa-spinner fa-spin me-2"></i>
-                Requesting camera access...
-            </div>`;
-
-        // Create new scanner instance if needed
-        if (!html5QrCode) {
-            html5QrCode = new Html5Qrcode("reader");
-        }
-        
-        // Get available cameras
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const cameras = devices.filter(device => device.kind === 'videoinput');
-        
-        console.log('Available cameras:', cameras);
-        
-        if (cameras && cameras.length) {
-            const select = document.getElementById('camera-select');
-            select.innerHTML = cameras.map(camera => 
-                `<option value="${camera.deviceId}">${camera.label || `Camera ${cameras.indexOf(camera) + 1}`}</option>`
-            ).join('');
+    // Handle successful scan
+    async function handleScan(decodedText) {
+        try {
+            // Play success sound
+            const audio = new Audio('/static/sounds/beep.mp3');
+            audio.play().catch(() => {});
             
-            // Set first camera as default
-            currentCamera = cameras[0].deviceId;
-            select.value = currentCamera;
+            // Vibrate if available
+            if (navigator.vibrate) {
+                navigator.vibrate(200);
+            }
             
-            // Show scan region highlight
-            document.getElementById('scan-region-highlight').classList.remove('d-none');
+            // Parse QR code data
+            const [userId, mealType, date] = decodedText.split('|');
             
-            // Add camera selection handler
-            select.addEventListener('change', async (e) => {
-                currentCamera = e.target.value;
-                if (html5QrCode.isScanning) {
-                    await html5QrCode.stop();
-                    await startScanner();
-                }
+            // Verify booking
+            const response = await fetch('/verify_booking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, meal_type: mealType, date: date })
             });
-
-            // Auto start the scanner
-            await startScanner();
             
-        } else {
-            throw new Error('No cameras found on your device');
-        }
-    } catch (err) {
-        console.error('Error initializing scanner:', err);
-        document.getElementById('current-scan').innerHTML = `
-            <div class="alert alert-danger d-flex align-items-center">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                <div>
-                    <strong>Camera Error:</strong> ${err.message || 'Could not access camera'}
-                    <br><small>Please ensure you've granted camera permissions and try again.</small>
-                </div>
-            </div>
-            <button class="btn btn-primary mt-3" onclick="retryInitializeScanner()">
-                <i class="fas fa-redo me-2"></i>Retry Camera Access
-            </button>`;
-    }
-}
-
-// Start the scanner
-async function startScanner() {
-    try {
-        document.getElementById('current-scan').innerHTML = `
-            <div class="alert alert-info d-flex align-items-center">
-                <i class="fas fa-spinner fa-spin me-2"></i>
-                Starting camera...
-            </div>`;
+            const result = await response.json();
+            showResult(result.message, result.success);
             
-        const config = {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0
-        };
-
-        await html5QrCode.start(
-            currentCamera,
-            config,
-            onScanSuccess,
-            onScanFailure
-        );
-
-        document.getElementById('start-scanner').style.display = 'none';
-        document.getElementById('stop-scanner').style.display = 'inline-flex';
-        document.getElementById('current-scan').innerHTML = `
-            <div class="alert alert-success d-flex align-items-center">
-                <i class="fas fa-camera fs-4 me-3"></i>
-                <div>Scanner is active and ready to scan QR codes</div>
-            </div>`;
+            // Add to scan history
+            const row = scanHistory.insertRow(0);
+            const time = new Date().toLocaleTimeString();
+            row.innerHTML = `
+                <td>${time}</td>
+                <td>User ${userId}</td>
+                <td>${mealType}</td>
+                <td>${new Date(date).toLocaleDateString()}</td>
+                <td>
+                    <span class="badge ${result.success ? 'bg-success' : 'bg-danger'}">
+                        ${result.success ? 'Success' : 'Failed'}
+                    </span>
+                </td>
+            `;
             
-    } catch (err) {
-        console.error('Error starting scanner:', err);
-        document.getElementById('current-scan').innerHTML = `
-            <div class="alert alert-danger d-flex align-items-center">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                <div>
-                    <strong>Error starting camera:</strong> ${err.message}
-                    <br><small>Please try a different camera or check permissions.</small>
-                </div>
-            </div>
-            <button class="btn btn-primary mt-3" onclick="retryInitializeScanner()">
-                <i class="fas fa-redo me-2"></i>Retry Camera Access
-            </button>`;
-    }
-}
-
-// Stop the scanner
-async function stopScanner() {
-    try {
-        if (html5QrCode && html5QrCode.isScanning) {
-            await html5QrCode.stop();
-            document.getElementById('start-scanner').style.display = 'inline-flex';
-            document.getElementById('stop-scanner').style.display = 'none';
-            document.getElementById('current-scan').innerHTML = `
-                <div class="alert alert-info d-flex align-items-center">
-                    <i class="fas fa-info-circle fs-4 me-3"></i>
-                    <div>Scanner stopped. Click "Start Scanner" to begin scanning again.</div>
-                </div>`;
+        } catch (err) {
+            console.error('Error handling scan:', err);
+            showResult('Error processing scan: ' + err.message, false);
         }
-    } catch (err) {
-        console.error('Error stopping scanner:', err);
     }
-}
 
-// Add scan to history
-function addToScanHistory(scan) {
-    scanHistory.unshift(scan);
-    if (scanHistory.length > 50) scanHistory.pop(); // Keep last 50 scans
-    
-    const historyContainer = document.getElementById('scan-history');
-    historyContainer.innerHTML = scanHistory.map(scan => `
-        <div class="list-group-item">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>${scan.text}</strong>
-                    <br>
-                    <small class="text-muted">${scan.timestamp}</small>
-                </div>
-                <span class="badge bg-success">Verified</span>
-            </div>
-        </div>
-    `).join('');
-}
-
-// Clear scan history
-function clearScanHistory() {
-    if (confirm('Are you sure you want to clear the scan history?')) {
-        scanHistory = [];
-        document.getElementById('scan-history').innerHTML = '';
-    }
-}
-
-// Verify booking
-async function verifyBooking(data) {
-    try {
-        const response = await fetch('/verify_booking', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        });
-
-        const result = await response.json();
-        document.getElementById('current-scan').innerHTML = `
-            <div class="alert alert-${result.success ? 'success' : 'danger'} d-flex align-items-center">
-                <i class="fas fa-${result.success ? 'check-circle' : 'exclamation-circle'} me-2"></i>
-                ${result.message}
-            </div>`;
-            
-        if (result.success) {
-            // Optionally reload data or update UI
-            setTimeout(() => {
-                document.getElementById('current-scan').innerHTML = `
-                    <div class="alert alert-success d-flex align-items-center">
-                        <i class="fas fa-camera fs-4 me-3"></i>
-                        <div>Scanner is active and ready to scan QR codes</div>
-                    </div>`;
-            }, 2000);
+    // Handle scan errors
+    function handleError(err) {
+        if (err.includes('NotAllowedError')) {
+            showResult('Camera access denied. Please check permissions.', false);
         }
-    } catch (err) {
-        console.error('Error verifying booking:', err);
-        document.getElementById('current-scan').innerHTML = `
-            <div class="alert alert-danger d-flex align-items-center">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                Error verifying booking. Please try again.
-            </div>`;
     }
-}
 
-// Play sound feedback
-function playSound(type) {
-    try {
-        const audio = new Audio(type === 'success' ? '/static/sounds/success.mp3' : '/static/sounds/error.mp3');
-        audio.play();
-    } catch (err) {
-        console.error('Error playing sound:', err);
+    // Show result message
+    function showResult(message, success) {
+        scanResult.textContent = message;
+        scanResult.classList.remove('d-none', 'alert-success', 'alert-danger');
+        scanResult.classList.add(success ? 'alert-success' : 'alert-danger');
     }
-}
 
-// Event Listeners
-document.addEventListener('DOMContentLoaded', () => {
-    // Scanner tab activation handler
-    document.querySelector('button[data-bs-target="#scanner"]').addEventListener('click', () => {
-        if (!html5QrCode) {
-            initializeScanner();
-        }
+    // Update control buttons
+    function updateControls(isScanning) {
+        startButton.classList.toggle('d-none', isScanning);
+        stopButton.classList.toggle('d-none', !isScanning);
+        cameraSelect.disabled = isScanning;
+        refreshCamerasBtn.disabled = isScanning;
+        requestCameraBtn.disabled = isScanning;
+    }
+
+    // Take snapshot
+    function takeSnapshot() {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Create download link
+        const link = document.createElement('a');
+        link.download = 'qr-snapshot.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    }
+
+    // Event listeners
+    requestCameraBtn.addEventListener('click', requestCameraAccess);
+    refreshCamerasBtn.addEventListener('click', loadCameras);
+    startButton.addEventListener('click', startScanning);
+    stopButton.addEventListener('click', stopScanning);
+    snapshotBtn.addEventListener('click', takeSnapshot);
+    document.getElementById('clearHistory').addEventListener('click', () => {
+        scanHistory.innerHTML = '';
     });
-    
-    // Start scanner button
-    document.getElementById('start-scanner').addEventListener('click', startScanner);
-    
-    // Stop scanner button
-    document.getElementById('stop-scanner').addEventListener('click', stopScanner);
+
+    // Initialize
+    initScanner();
+    loadCameras();
 });
 </script>
 {% endblock %}
